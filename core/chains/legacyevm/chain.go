@@ -150,8 +150,7 @@ type ChainOpts struct {
 	FeatureConfig  FeatureConfig
 	ListenerConfig txmgr.ListenerConfig
 
-	MailMon      *mailbox.Monitor
-	GasEstimator gas.EvmFeeEstimator
+	MailMon *mailbox.Monitor
 
 	DS sqlutil.DataSource
 
@@ -163,7 +162,7 @@ type ChainOpts struct {
 	GenLogPoller      func(*big.Int) logpoller.LogPoller
 	GenHeadTracker    func(*big.Int, heads.Broadcaster) heads.Tracker
 	GenTxManager      func(*big.Int) txmgr.TxManager
-	GenGasEstimator   func(*big.Int) gas.EvmFeeEstimator
+	GenGasEstimator   func(*big.Int) gas.EvmFeeEstimator //TODO
 }
 
 func (o ChainOpts) Validate() error {

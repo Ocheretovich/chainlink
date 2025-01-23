@@ -29,6 +29,8 @@ type LoopRegistry struct {
 	registry map[string]*RegisteredLoop
 
 	lggr                   logger.Logger
+	appID                  string
+	featureLogPoller       bool
 	cfgDatabase            config.Database
 	cfgTracing             config.Tracing
 	cfgTelemetry           config.Telemetry
@@ -36,10 +38,12 @@ type LoopRegistry struct {
 	telemetryAuthPubKeyHex string
 }
 
-func NewLoopRegistry(lggr logger.Logger, dbConfig config.Database, tracing config.Tracing, telemetry config.Telemetry, telemetryAuthHeaders map[string]string, telemetryAuthPubKeyHex string) *LoopRegistry {
+func NewLoopRegistry(lggr logger.Logger, appID string, featureLogPoller bool, dbConfig config.Database, tracing config.Tracing, telemetry config.Telemetry, telemetryAuthHeaders map[string]string, telemetryAuthPubKeyHex string) *LoopRegistry {
 	return &LoopRegistry{
 		registry:               map[string]*RegisteredLoop{},
 		lggr:                   logger.Named(lggr, "LoopRegistry"),
+		appID:                  appID,
+		featureLogPoller:       featureLogPoller,
 		cfgDatabase:            dbConfig,
 		cfgTracing:             tracing,
 		cfgTelemetry:           telemetry,
@@ -71,7 +75,7 @@ func (m *LoopRegistry) Register(id string) (*RegisteredLoop, error) {
 	if len(ports) != 1 {
 		return nil, errors.New("failed to get free port: no ports returned")
 	}
-	envCfg := loop.EnvConfig{PrometheusPort: ports[0]}
+	envCfg := loop.EnvConfig{AppID: m.appID, FeatureLogPoller: m.featureLogPoller, PrometheusPort: ports[0]}
 
 	if m.cfgDatabase != nil {
 		dbURL := m.cfgDatabase.URL()
@@ -79,6 +83,7 @@ func (m *LoopRegistry) Register(id string) (*RegisteredLoop, error) {
 		envCfg.DatabaseIdleInTxSessionTimeout = m.cfgDatabase.DefaultIdleInTxSessionTimeout()
 		envCfg.DatabaseLockTimeout = m.cfgDatabase.DefaultLockTimeout()
 		envCfg.DatabaseQueryTimeout = m.cfgDatabase.DefaultQueryTimeout()
+		envCfg.DatabaseListenerFallbackPollInterval = m.cfgDatabase.Listener().FallbackPollInterval()
 		envCfg.DatabaseLogSQL = m.cfgDatabase.LogSQL()
 		envCfg.DatabaseMaxOpenConns = m.cfgDatabase.MaxOpenConns()
 		envCfg.DatabaseMaxIdleConns = m.cfgDatabase.MaxIdleConns()

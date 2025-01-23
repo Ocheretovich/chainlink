@@ -22,7 +22,6 @@ import (
 	"github.com/smartcontractkit/chainlink-evm/pkg/client/clienttest"
 	evmconfig "github.com/smartcontractkit/chainlink-evm/pkg/config"
 	configtoml "github.com/smartcontractkit/chainlink-evm/pkg/config/toml"
-	"github.com/smartcontractkit/chainlink-evm/pkg/gas"
 	evmheads "github.com/smartcontractkit/chainlink-evm/pkg/heads"
 	"github.com/smartcontractkit/chainlink-evm/pkg/logpoller"
 	evmtypes "github.com/smartcontractkit/chainlink-evm/pkg/types"
@@ -65,7 +64,6 @@ type TestChainOpts struct {
 	TxManager      txmgr.TxManager
 	KeyStore       keystore.Eth
 	MailMon        *mailbox.Monitor
-	GasEstimator   gas.EvmFeeEstimator
 }
 
 // NewLegacyChains returns a simple chain collection with one chain and
@@ -86,7 +84,6 @@ func NewChainOpts(t testing.TB, testopts TestChainOpts) (logger.Logger, keystore
 		ListenerConfig: testopts.ListenerConfig,
 		FeatureConfig:  testopts.FeatureConfig,
 		MailMon:        testopts.MailMon,
-		GasEstimator:   testopts.GasEstimator,
 		DS:             testopts.DB,
 	}
 	opts.GenEthClient = func(*big.Int) evmclient.Client {
@@ -117,11 +114,6 @@ func NewChainOpts(t testing.TB, testopts TestChainOpts) (logger.Logger, keystore
 	}
 	if opts.MailMon == nil {
 		opts.MailMon = servicetest.Run(t, mailboxtest.NewMonitor(t))
-	}
-	if testopts.GasEstimator != nil {
-		opts.GenGasEstimator = func(*big.Int) gas.EvmFeeEstimator {
-			return testopts.GasEstimator
-		}
 	}
 
 	return lggr, testopts.KeyStore, opts
