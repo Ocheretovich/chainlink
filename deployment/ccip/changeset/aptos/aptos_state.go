@@ -1,29 +1,25 @@
-package changeset
+package aptos
 
 import (
 	"errors"
 	"fmt"
 
 	"github.com/aptos-labs/aptos-go-sdk"
-
 	"github.com/smartcontractkit/chainlink/deployment"
 	commontypes "github.com/smartcontractkit/chainlink/deployment/common/types"
 )
 
-const (
-	AptosMCMSType     deployment.ContractType = "AptosManyChainMultisig"
-	AptosCCIPType     deployment.ContractType = "AptosCCIP"
-	AptosReceiverType deployment.ContractType = "AptosReceiver"
-)
+const AptosReceiver deployment.ContractType = "AptosReceiver"
 
+// TODO: use chainlink/deployment/ccip/changeset/aptos_state.go
 type AptosCCIPChainState struct {
 	MCMSAddress      aptos.AccountAddress
 	CCIPAddress      aptos.AccountAddress
 	LinkTokenAddress aptos.AccountAddress
 
 	// Test contracts
-	TestRouterAddress aptos.AccountAddress
-	ReceiverAddress   aptos.AccountAddress
+	TestRouterAddress   aptos.AccountAddress
+	TestReceiverAddress aptos.AccountAddress
 }
 
 // LoadOnchainStateAptos loads chain state for Aptos chains from env
@@ -64,8 +60,8 @@ func loadAptosChainStateFromAddresses(addresses map[string]deployment.TypeAndVer
 			chainState.CCIPAddress = *address
 		case commontypes.LinkToken:
 			chainState.LinkTokenAddress = *address
-		case AptosReceiverType:
-			chainState.ReceiverAddress = *address
+		case AptosReceiver:
+			chainState.TestReceiverAddress = *address
 		}
 	}
 	return chainState, nil
