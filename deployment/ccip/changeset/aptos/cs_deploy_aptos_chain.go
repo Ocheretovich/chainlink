@@ -12,19 +12,18 @@ import (
 	"github.com/smartcontractkit/chainlink-aptos/bindings/compile"
 	mcmsbind "github.com/smartcontractkit/chainlink-aptos/bindings/mcms"
 	"github.com/smartcontractkit/chainlink/deployment"
+	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset"
 	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset/aptos/utils"
 	"github.com/smartcontractkit/mcms"
 	aptosmcms "github.com/smartcontractkit/mcms/sdk/aptos"
 	"github.com/smartcontractkit/mcms/types"
 )
 
-const AptosCCIPType deployment.ContractType = "AptosCCIP"
-
 // CsDeployAptosChain deploys CCIP Package for Aptos chains
 var CsDeployAptosChain deployment.ChangeSetV2[DeployAptosChainConfig] = CsDeployAptosChainImp{}
 
 type CsDeployAptosChainImp struct {
-	onChainState map[uint64]AptosCCIPChainState
+	onChainState map[uint64]changeset.AptosCCIPChainState
 	env          deployment.Environment
 	ab           *deployment.AddressBookMap
 	proposals    []mcms.Proposal
@@ -38,7 +37,7 @@ func (cs CsDeployAptosChainImp) VerifyPreconditions(env deployment.Environment, 
 	}
 
 	// Validate env and prerequisite contracts
-	state, err := LoadOnchainStateAptos(env)
+	state, err := changeset.LoadOnchainStateAptos(env)
 	if err != nil {
 		return fmt.Errorf("failed to load existing onchain state: %w", err)
 	}
@@ -66,7 +65,7 @@ func (cs CsDeployAptosChainImp) VerifyPreconditions(env deployment.Environment, 
 
 func (cs CsDeployAptosChainImp) Apply(env deployment.Environment, config DeployAptosChainConfig) (deployment.ChangesetOutput, error) {
 	cs.ab = deployment.NewMemoryAddressBook()
-	state, err := LoadOnchainStateAptos(env)
+	state, err := changeset.LoadOnchainStateAptos(env)
 	if err != nil {
 		return deployment.ChangesetOutput{}, fmt.Errorf("failed to load onchain state: %w", err)
 	}
@@ -177,7 +176,7 @@ func (cs *CsDeployAptosChainImp) generateDeployCCIPProposal(chainSel uint64) (*a
 	}
 
 	// Save the address of the CCIP object
-	typeAndVersion := deployment.NewTypeAndVersion(AptosCCIPType, deployment.Version1_0_0)
+	typeAndVersion := deployment.NewTypeAndVersion(changeset.AptosCCIPType, deployment.Version1_0_0)
 	cs.ab.Save(chainSel, ccipObjectAddress.String(), typeAndVersion)
 
 	// Generate deploy proposal

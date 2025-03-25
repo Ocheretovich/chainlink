@@ -1,4 +1,4 @@
-package aptos
+package changeset
 
 import (
 	"errors"
@@ -9,7 +9,11 @@ import (
 	commontypes "github.com/smartcontractkit/chainlink/deployment/common/types"
 )
 
-const AptosReceiver deployment.ContractType = "AptosReceiver"
+const (
+	AptosMCMSType     deployment.ContractType = "AptosManyChainMultisig"
+	AptosCCIPType     deployment.ContractType = "AptosCCIP"
+	AptosReceiverType deployment.ContractType = "AptosReceiver"
+)
 
 // TODO: use chainlink/deployment/ccip/changeset/aptos_state.go
 type AptosCCIPChainState struct {
@@ -60,7 +64,7 @@ func loadAptosChainStateFromAddresses(addresses map[string]deployment.TypeAndVer
 			chainState.CCIPAddress = *address
 		case commontypes.LinkToken:
 			chainState.LinkTokenAddress = *address
-		case AptosReceiver:
+		case AptosReceiverType:
 			chainState.TestReceiverAddress = *address
 		}
 	}
