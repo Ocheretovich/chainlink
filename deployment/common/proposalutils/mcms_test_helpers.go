@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	aptosapi "github.com/aptos-labs/aptos-go-sdk/api"
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -15,8 +16,10 @@ import (
 	"github.com/smartcontractkit/ccip-owner-contracts/pkg/proposal/mcms"
 	"github.com/smartcontractkit/ccip-owner-contracts/pkg/proposal/timelock"
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	aptosutil "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/aptos/utils"
 	mcmslib "github.com/smartcontractkit/mcms"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
+	mcmsaptossdk "github.com/smartcontractkit/mcms/sdk/aptos"
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
@@ -164,6 +167,13 @@ func SignMCMSProposal(t *testing.T, env deployment.Environment, proposal *mcmsli
 		inspectorsMap[chainSel] = mcmssolanasdk.NewInspector(chain.Client)
 	}
 
+	for _, chain := range env.AptosChains {
+		_, exists := chainsel.AptosChainBySelector(chain.Selector)
+		require.True(t, exists)
+		chainSel := mcmstypes.ChainSelector(chain.Selector)
+		inspectorsMap[chainSel] = mcmsaptossdk.NewInspector(chain.Client)
+	}
+
 	proposal.UseSimulatedBackend(true)
 
 	signable, err := mcmslib.NewSignable(proposal, inspectorsMap)
@@ -215,6 +225,14 @@ func ExecuteMCMSProposalV2(t *testing.T, env deployment.Environment, proposal *m
 				env.SolChains[uint64(op.ChainSelector)].URL,
 				env.SolChains[uint64(op.ChainSelector)].DeployerKey.PublicKey().String(),
 			)
+		case chainsel.FamilyAptos:
+			encoder := encoders[op.ChainSelector].(*mcmsaptossdk.Encoder)
+			executorsMap[op.ChainSelector] = mcmsaptossdk.NewExecutor(
+				env.AptosChains[uint64(op.ChainSelector)].Client,
+				env.AptosChains[uint64(op.ChainSelector)].DeployerSigner,
+				encoder,
+			)
+			t.Logf("[ExecuteMCMSProposalV2] Using Aptos chain with chainSelector=%d", uint64(op.ChainSelector))
 
 		default:
 			require.FailNow(t, "unsupported chain family")
@@ -245,6 +263,16 @@ func ExecuteMCMSProposalV2(t *testing.T, env deployment.Environment, proposal *m
 				return fmt.Errorf("[ExecuteMCMSProposalV2] Confirm failed: %w", err)
 			}
 		}
+		// TODO: Confirm Aptos transaction properly
+		if family == chainsel.FamilyAptos {
+			chain := env.AptosChains[uint64(chainSelector)]
+			tx := root.RawData.(*aptosapi.PendingTransaction)
+			t.Logf("[ExecuteMCMSProposalV2] SetRoot EVM tx hash: %s", tx.Hash)
+			err = aptosutil.ConfirmTx(chain, tx.Hash)
+			if err != nil {
+				return fmt.Errorf("[ExecuteMCMSProposalV2] Confirm failed: %w", err)
+			}
+		}
 	}
 
 	// execute each operation sequentially
@@ -263,6 +291,16 @@ func ExecuteMCMSProposalV2(t *testing.T, env deployment.Environment, proposal *m
 			evmTransaction := result.RawData.(*gethtypes.Transaction)
 			t.Logf("[ExecuteMCMSProposalV2] Operation %d EVM tx hash: %s", i, evmTransaction.Hash().String())
 			_, err = chain.Confirm(evmTransaction)
+			if err != nil {
+				return fmt.Errorf("[ExecuteMCMSProposalV2] Confirm failed: %w", err)
+			}
+		}
+		// TODO: Confirm Aptos transaction properly
+		if family == chainsel.FamilyAptos {
+			chain := env.AptosChains[uint64(op.ChainSelector)]
+			tx := result.RawData.(*aptosapi.PendingTransaction)
+			t.Logf("[ExecuteMCMSProposalV2] SetRoot EVM tx hash: %s", tx.Hash)
+			err = aptosutil.ConfirmTx(chain, tx.Hash)
 			if err != nil {
 				return fmt.Errorf("[ExecuteMCMSProposalV2] Confirm failed: %w", err)
 			}

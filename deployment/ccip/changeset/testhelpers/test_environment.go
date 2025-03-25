@@ -25,6 +25,7 @@ import (
 	commonconfig "github.com/smartcontractkit/chainlink-common/pkg/config"
 
 	solBinary "github.com/gagliardetto/binary"
+	solFeeQuoter "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/fee_quoter"
 
 	solFeeQuoter "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/fee_quoter"
 
@@ -656,6 +657,13 @@ func AddCCIPContractsToEnvironment(t *testing.T, allChains []uint64, tEnv TestEn
 		}
 	}
 
+	aptosChains := []uint64{}
+	for _, chain := range allChains {
+		if _, ok := e.Env.AptosChains[chain]; ok {
+			aptosChains = append(aptosChains, chain)
+		}
+	}
+
 	for _, chain := range evmChains {
 		evmContractParams[chain] = v1_6.ChainContractParams{
 			FeeQuoterParams: v1_6.DefaultFeeQuoterParams(),
@@ -785,6 +793,27 @@ func AddCCIPContractsToEnvironment(t *testing.T, allChains []uint64, tEnv TestEn
 		tokenInfo[cciptypes.UnknownEncodedAddress(state.SolChains[chain].LinkToken.String())] = tokenConfig.TokenSymbolToInfo[changeset.LinkSymbol]
 		// TODO: point this to proper SOL feed, apparently 0 signified SOL
 		tokenInfo[cciptypes.UnknownEncodedAddress(solanago.SolMint.String())] = tokenConfig.TokenSymbolToInfo[changeset.WethSymbol]
+
+		ocrOverride := tc.OCRConfigOverride
+		commitOCRConfigs[chain] = v1_6.DeriveOCRParamsForCommit(v1_6.SimulationTest, e.FeedChainSel, tokenInfo, ocrOverride)
+		execOCRConfigs[chain] = v1_6.DeriveOCRParamsForExec(v1_6.SimulationTest, tokenDataProviders, ocrOverride)
+		chainConfigs[chain] = v1_6.ChainConfig{
+			Readers: nodeInfo.NonBootstraps().PeerIDs(),
+			// #nosec G115 - Overflow is not a concern in this test scenario
+			FChain: uint8(len(nodeInfo.NonBootstraps().PeerIDs()) / 3),
+			EncodableChainConfig: chainconfig.ChainConfig{
+				GasPriceDeviationPPB:    cciptypes.BigInt{Int: big.NewInt(globals.GasPriceDeviationPPB)},
+				DAGasPriceDeviationPPB:  cciptypes.BigInt{Int: big.NewInt(globals.DAGasPriceDeviationPPB)},
+				OptimisticConfirmations: globals.OptimisticConfirmations,
+			},
+		}
+	}
+
+	for _, chain := range aptosChains {
+		// TODO(aptos): update this for token transfers
+		tokenInfo := map[cciptypes.UnknownEncodedAddress]pluginconfig.TokenInfo{}
+		linkTokenAddress := state.AptosChains[chain].LinkTokenAddress
+		tokenInfo[cciptypes.UnknownEncodedAddress(linkTokenAddress.String())] = tokenConfig.TokenSymbolToInfo[changeset.LinkSymbol]
 
 		ocrOverride := tc.OCRConfigOverride
 		commitOCRConfigs[chain] = v1_6.DeriveOCRParamsForCommit(v1_6.SimulationTest, e.FeedChainSel, tokenInfo, ocrOverride)

@@ -22,22 +22,21 @@ const MCMSPackageName string = "mcms" // TODO: this should be a constant importe
 const AcceptOwnershipProposalDescription = "Accept ownership of the contract to self"
 
 type MCMSDeploymentOperations struct {
-	Env               deployment.Environment
-	Ab                *deployment.AddressBookMap
-	AptosChain        deployment.AptosChain
-	MCMSConfigs       mcmstypes.Config
-	AptosOnChainState changeset.AptosCCIPChainState
-	Proposals         *[]mcms.Proposal
+	Env         deployment.Environment
+	Ab          *deployment.AddressBookMap
+	AptosChain  deployment.AptosChain
+	MCMSConfigs mcmstypes.Config
+	Proposals   *[]mcms.Proposal
 }
 
 func (op *MCMSDeploymentOperations) DeployMCMS() (aptos.AccountAddress, mcmsbind.MCMS, error) {
 	mcmsSeed := mcmsbind.DefaultSeed + time.Now().String()
 	addressMCMS, mcmsDeployTx, contractMCMS, err := mcmsbind.DeployToResourceAccount(op.AptosChain.DeployerSigner, op.AptosChain.Client, mcmsSeed)
 	if err != nil {
-		return aptos.AccountAddress{}, mcmsbind.MCMS{}, fmt.Errorf("failed to deploy MCMS contract: %v", err)
+		return aptos.AccountAddress{}, mcmsbind.MCMSContract{}, fmt.Errorf("failed to deploy MCMS contract: %v", err)
 	}
 	if err := utils.ConfirmTx(op.AptosChain, mcmsDeployTx.Hash); err != nil {
-		return aptos.AccountAddress{}, mcmsbind.MCMS{}, fmt.Errorf("failed to confirm MCMS deployment transaction: %v", err)
+		return aptos.AccountAddress{}, mcmsbind.MCMSContract{}, fmt.Errorf("failed to confirm MCMS deployment transaction: %v", err)
 	}
 
 	typeAndVersion := deployment.NewTypeAndVersion(changeset.AptosMCMSType, deployment.Version1_0_0)
@@ -59,7 +58,7 @@ func (op *MCMSDeploymentOperations) ConfigureMCMS(addressMCMS aptos.AccountAddre
 
 func (op *MCMSDeploymentOperations) TransferOwnershipToSelf(contractMCMS mcmsbind.MCMS) error {
 	opts := &bind.TransactOpts{Signer: op.AptosChain.DeployerSigner}
-	tx, err := contractMCMS.MCMSAccount.TransferOwnershipToSelf(opts)
+	tx, err := contractMCMS.MCMSAccount().TransferOwnershipToSelf(opts)
 	if err != nil {
 		return fmt.Errorf("failed to TransferOwnershipToSelf in MCMS contract: %w", err)
 	}
@@ -72,14 +71,14 @@ func (op *MCMSDeploymentOperations) TransferOwnershipToSelf(contractMCMS mcmsbin
 
 func (op *MCMSDeploymentOperations) GenerateAcceptOwnershipProposal(addressMCMS aptos.AccountAddress, contractMCMS mcmsbind.MCMS) (*mcms.Proposal, uint64, error) {
 	var operations []mcmstypes.Operation
-	module, function, _, args, err := contractMCMS.MCMSAccount.EncodeAcceptOwnership()
+	moduleInfo, function, _, args, err := contractMCMS.MCMSAccount().Encoder().AcceptOwnership()
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to encode AcceptOwnership: %w", err)
 	}
 	additionalFields := aptosmcms.AdditionalFields{
-		ModuleName:  module.Name,
+		PackageName: moduleInfo.PackageName,
+		ModuleName:  moduleInfo.ModuleName,
 		Function:    function,
-		PackageName: MCMSPackageName,
 	}
 	callOneAdditionalFields, err := json.Marshal(additionalFields)
 	if err != nil {
@@ -94,5 +93,5 @@ func (op *MCMSDeploymentOperations) GenerateAcceptOwnershipProposal(addressMCMS 
 		},
 	})
 
-	return utils.GenerateProposal(op.AptosChain.Client, contractMCMS, op.AptosChain.Selector, operations, AcceptOwnershipProposalDescription, 0)
+	return utils.GenerateProposal(op.AptosChain.Client, contractMCMS.Address(), op.AptosChain.Selector, operations, AcceptOwnershipProposalDescription, 0)
 }

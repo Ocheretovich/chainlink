@@ -72,12 +72,11 @@ func deployMCMSContractsForAptosChain(p *deployAptosMCMSParams) error {
 	}
 
 	ops := operation.MCMSDeploymentOperations{
-		Env:               p.env,
-		Ab:                p.ab,
-		AptosChain:        aptosChain,
-		MCMSConfigs:       p.mcmsConfigs,
-		AptosOnChainState: chainState,
-		Proposals:         p.proposals,
+		Env:         p.env,
+		Ab:          p.ab,
+		AptosChain:  aptosChain,
+		MCMSConfigs: p.mcmsConfigs,
+		Proposals:   p.proposals,
 	}
 	// Check if MCMS package is already deployed
 	if (chainState.MCMSAddress != aptos.AccountAddress{}) {
@@ -103,7 +102,7 @@ func deployMCMSContractsForAptosChain(p *deployAptosMCMSParams) error {
 	// TODO: This returns nextOpCount, we should keep track of it when merging migrations
 	proposal, _, err := ops.GenerateAcceptOwnershipProposal(addressMCMS, contractMCMS)
 	if err != nil {
-		return fmt.Errorf("failed to build proposal: %w", err)
+		return fmt.Errorf("failed to build AcceptOwnership proposal: %w", err)
 	}
 	*p.proposals = append(*p.proposals, *proposal)
 
