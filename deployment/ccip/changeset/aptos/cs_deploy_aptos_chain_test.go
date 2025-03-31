@@ -3,9 +3,9 @@ package aptos
 import (
 	"testing"
 
-	"github.com/aptos-labs/aptos-go-sdk"
 	"github.com/smartcontractkit/chainlink/deployment"
 	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset"
+	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset/aptos/config"
 	commonchangeset "github.com/smartcontractkit/chainlink/deployment/common/changeset"
 	"github.com/smartcontractkit/chainlink/deployment/common/proposalutils"
 	"github.com/smartcontractkit/chainlink/deployment/environment/memory"
@@ -18,16 +18,39 @@ import (
 	ccipbind "github.com/smartcontractkit/chainlink-aptos/bindings/ccip"
 )
 
-func TestCsDeployAptosChainImp_VerifyPreconditions(t *testing.T) {
+func TestDeployAptosChainImp_VerifyPreconditions(t *testing.T) {
 	tests := []struct {
 		name      string
 		env       deployment.Environment
-		config    DeployAptosChainConfig
+		config    config.DeployAptosChainConfig
 		wantErrRe string
 		wantErr   bool
 	}{
 		{
-			name: "success - valid config and state",
+			name: "success - valid configs",
+			env: deployment.Environment{
+				Name:   "test",
+				Logger: logger.TestLogger(t),
+				AptosChains: map[uint64]deployment.AptosChain{
+					743186221051783445:  {},
+					4457093679053095497: {},
+				},
+				ExistingAddresses: deployment.NewMemoryAddressBook(),
+			},
+			config: config.DeployAptosChainConfig{
+				ContractParamsPerChain: map[uint64]config.ChainContractParams{
+					4457093679053095497: getMockChainContractParams(t, 4457093679053095497),
+					743186221051783445:  getMockChainContractParams(t, 743186221051783445),
+				},
+				MCMSConfigPerChain: map[uint64]mcmstypes.Config{
+					4457093679053095497: getMockMCMSConfig(t),
+					743186221051783445:  getMockMCMSConfig(t),
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "success - valid config w MCMS deployed",
 			env: deployment.Environment{
 				Name:   "test",
 				Logger: logger.TestLogger(t),
@@ -46,8 +69,8 @@ func TestCsDeployAptosChainImp_VerifyPreconditions(t *testing.T) {
 					},
 				),
 			},
-			config: DeployAptosChainConfig{
-				ContractParamsPerChain: map[uint64]ChainContractParams{
+			config: config.DeployAptosChainConfig{
+				ContractParamsPerChain: map[uint64]config.ChainContractParams{
 					4457093679053095497: getMockChainContractParams(t, 4457093679053095497),
 					743186221051783445:  getMockChainContractParams(t, 743186221051783445),
 				},
@@ -73,13 +96,13 @@ func TestCsDeployAptosChainImp_VerifyPreconditions(t *testing.T) {
 					},
 				),
 			},
-			config: DeployAptosChainConfig{
-				ContractParamsPerChain: map[uint64]ChainContractParams{
+			config: config.DeployAptosChainConfig{
+				ContractParamsPerChain: map[uint64]config.ChainContractParams{
 					4457093679053095497: getMockChainContractParams(t, 4457093679053095497),
 					743186221051783445:  getMockChainContractParams(t, 743186221051783445),
 				},
 			},
-			wantErrRe: `env not found for chains: \[743186221051783445\]`,
+			wantErrRe: `chain 743186221051783445 not found in env`,
 			wantErr:   true,
 		},
 		{
@@ -90,52 +113,75 @@ func TestCsDeployAptosChainImp_VerifyPreconditions(t *testing.T) {
 				ExistingAddresses: deployment.NewMemoryAddressBook(),
 				AptosChains:       map[uint64]deployment.AptosChain{},
 			},
-			config: DeployAptosChainConfig{
-				ContractParamsPerChain: map[uint64]ChainContractParams{
+			config: config.DeployAptosChainConfig{
+				ContractParamsPerChain: map[uint64]config.ChainContractParams{
 					1: {},
 				},
 			},
-			wantErrRe: "invalid DeployAptosChainConfig:",
+			wantErrRe: "invalid chain selector:",
 			wantErr:   true,
 		},
 		{
-			name: "error - missing MCMS contract for 2 chains",
+			name: "error - missing MCMS config for chain without MCMS deployed",
 			env: deployment.Environment{
 				Name:   "test",
 				Logger: logger.TestLogger(t),
 				AptosChains: map[uint64]deployment.AptosChain{
-					743186221051783445:  {},
+					4457093679053095497: {},
+				},
+				ExistingAddresses: getTestAddressBook(
+					map[uint64]map[string]deployment.TypeAndVersion{
+						4457093679053095497: {}, // No MCMS address in state
+					},
+				),
+			},
+			config: config.DeployAptosChainConfig{
+				ContractParamsPerChain: map[uint64]config.ChainContractParams{
+					4457093679053095497: getMockChainContractParams(t, 4457093679053095497),
+				},
+				// MCMSConfigPerChain is missing needed configs
+			},
+			wantErrRe: `invalid mcms configs for chain 4457093679053095497`,
+			wantErr:   true,
+		},
+		{
+			name: "error - invalid config for chain",
+			env: deployment.Environment{
+				Name:   "test",
+				Logger: logger.TestLogger(t),
+				AptosChains: map[uint64]deployment.AptosChain{
 					4457093679053095497: {},
 				},
 				ExistingAddresses: getTestAddressBook(
 					map[uint64]map[string]deployment.TypeAndVersion{
 						4457093679053095497: {
-							mockAddress: {Type: "testType"},
-						},
-						743186221051783445: {
-							mockAddress: {Type: "testType"},
+							mockMCMSAddress: {Type: changeset.AptosMCMSType}, // MCMS already deployed
 						},
 					},
 				),
 			},
-			config: DeployAptosChainConfig{
-				ContractParamsPerChain: map[uint64]ChainContractParams{
-					4457093679053095497: getMockChainContractParams(t, 4457093679053095497),
-					743186221051783445:  getMockChainContractParams(t, 743186221051783445),
+			config: config.DeployAptosChainConfig{
+				ContractParamsPerChain: map[uint64]config.ChainContractParams{
+					4457093679053095497: {
+						FeeQuoterParams: config.FeeQuoterParams{
+							TokenPriceStalenessThreshold: 0, // Invalid gas limit (assuming 0 is invalid)
+						},
+					},
 				},
 			},
-			wantErrRe: "MCMS contract not deployed for chains:.*(4457093679053095497.*743186221051783445|743186221051783445.*4457093679053095497).*",
+			wantErrRe: `invalid config for chain 4457093679053095497`,
 			wantErr:   true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cs := CsDeployAptosChainImp{}
+			cs := DeployAptosChain{}
 			err := cs.VerifyPreconditions(tt.env, tt.config)
 			if tt.wantErr {
 				assert.Error(t, err)
-				assert.Regexp(t, tt.wantErrRe, err.Error())
+				errStr := err.Error()
+				assert.Regexp(t, tt.wantErrRe, errStr)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -143,48 +189,38 @@ func TestCsDeployAptosChainImp_VerifyPreconditions(t *testing.T) {
 	}
 }
 
-func TestCsDeployAptosChain_Apply(t *testing.T) {
+func TestDeployAptosChain_Apply(t *testing.T) {
 	t.Parallel()
 	lggr := logger.TestLogger(t)
 
 	// Setup memory environment with 1 Aptos chain
-	e := memory.NewMemoryEnvironment(t, lggr, zapcore.InfoLevel, memory.MemoryEnvironmentConfig{
+	env := memory.NewMemoryEnvironment(t, lggr, zapcore.InfoLevel, memory.MemoryEnvironmentConfig{
 		AptosChains: 1,
 	})
 
 	// Get chain selectors
-	aptosChainSelectors := e.AllChainSelectorsAptos()
+	aptosChainSelectors := env.AllChainSelectorsAptos()
 	require.Equal(t, 1, len(aptosChainSelectors), "Expected exactly 1 Aptos chain")
 	chainSelector := aptosChainSelectors[0]
-	t.Log("Deployer: ", e.AptosChains[chainSelector].DeployerSigner)
-
-	// Deploy MCMS
-	mcmsConfig := proposalutils.SingleGroupMCMSV2(t)
-	mcmsDeployConfig := DeployAptosMCMSConfig{
-		MCMSConfigPerChain: map[uint64]mcmstypes.Config{
-			chainSelector: mcmsConfig,
-		},
-	}
-
-	e, err := commonchangeset.ApplyChangesetsV2(t, e, []commonchangeset.ConfiguredChangeSet{
-		commonchangeset.Configure(CsDeployAptosMCMS, mcmsDeployConfig),
-	})
-	require.NoError(t, err)
+	t.Log("Deployer: ", env.AptosChains[chainSelector].DeployerSigner)
 
 	// Deploy CCIP to Aptos chain
-	ccipConfig := DeployAptosChainConfig{
-		ContractParamsPerChain: map[uint64]ChainContractParams{
-			chainSelector: getMockChainContractParams(t, chainSelector),
+	mockCCIPParams := getMockChainContractParams(t, chainSelector)
+	ccipConfig := config.DeployAptosChainConfig{
+		ContractParamsPerChain: map[uint64]config.ChainContractParams{
+			chainSelector: mockCCIPParams,
+		},
+		MCMSConfigPerChain: map[uint64]mcmstypes.Config{
+			chainSelector: proposalutils.SingleGroupMCMSV2(t),
 		},
 	}
-
-	e, err = commonchangeset.ApplyChangesetsV2(t, e, []commonchangeset.ConfiguredChangeSet{
-		commonchangeset.Configure(CsDeployAptosChain, ccipConfig),
+	env, err := commonchangeset.ApplyChangesetsV2(t, env, []commonchangeset.ConfiguredChangeSet{
+		commonchangeset.Configure(DeployAptosChain{}, ccipConfig),
 	})
 	require.NoError(t, err)
 
 	// Verify CCIP deployment state by binding ccip contract and checking if it's deployed
-	state, err := changeset.LoadOnchainStateAptos(e)
+	state, err := changeset.LoadOnchainStateAptos(env)
 	require.NoError(t, err)
 	require.NotNil(t, state[chainSelector], "No state found for chain")
 
@@ -192,8 +228,8 @@ func TestCsDeployAptosChain_Apply(t *testing.T) {
 	require.NotEmpty(t, ccipAddr, "CCIP address should not be empty")
 
 	// Bind CCIP contract
-	ccipContract := ccipbind.Bind(ccipAddr, e.AptosChains[chainSelector].Client)
-	ownerAddr, err := ccipContract.Auth().Owner(nil)
+	ccipContract := ccipbind.Bind(ccipAddr, env.AptosChains[chainSelector].Client)
+	offRampSourceConfig, err := ccipContract.Offramp().GetSourceChainConfig(nil, mockCCIPParams.OffRampParams.SourceChainSelectors[0])
 	require.NoError(t, err)
-	require.NotEqual(t, aptos.AccountAddress{}, ownerAddr, "MCMS must own CCIP contract")
+	require.Equal(t, true, offRampSourceConfig.IsEnabled, "contracts were not initialized correctly")
 }

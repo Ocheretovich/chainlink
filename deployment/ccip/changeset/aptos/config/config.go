@@ -1,4 +1,4 @@
-package aptos
+package config
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 
 // DeployAptosChainConfig is a configuration for deploying CCIP Package for Aptos chains
 type DeployAptosChainConfig struct {
+	MCMSConfigPerChain     map[uint64]mcmstypes.Config
 	ContractParamsPerChain map[uint64]ChainContractParams
 }
 
@@ -54,10 +55,7 @@ type FeeQuoterParams struct {
 }
 
 func (f FeeQuoterParams) Validate() error {
-	if f.MaxFeeJuelsPerMsg < 0 {
-		return fmt.Errorf("MaxFeeJuelsPerMsg must be positive")
-	}
-	if (f.LinkToken == aptos.AccountAddress{}) {
+	if f.LinkToken == aptos.AccountZero {
 		return fmt.Errorf("LinkToken is required")
 	}
 	if f.TokenPriceStalenessThreshold == 0 {
@@ -72,9 +70,10 @@ func (f FeeQuoterParams) Validate() error {
 type OffRampParams struct {
 	ChainSelector                    uint64
 	PermissionlessExecutionThreshold uint32
-	IsRMNVerificationDisabled        bool
+	IsRMNVerificationDisabled        []bool
 	SourceChainSelectors             []uint64
 	SourceChainIsEnabled             []bool
+	SourceChainsOnRamp               [][]byte
 }
 
 func (o OffRampParams) Validate() error {
@@ -102,7 +101,7 @@ func (o OnRampParams) Validate() error {
 	if err := deployment.IsValidChainSelector(o.ChainSelector); err != nil {
 		return fmt.Errorf("invalid chain selector: %d - %w", o.ChainSelector, err)
 	}
-	if (o.AllowlistAdmin == aptos.AccountAddress{}) {
+	if o.AllowlistAdmin == aptos.AccountZero {
 		return fmt.Errorf("AllowlistAdmin is required")
 	}
 	if len(o.DestChainSelectors) != len(o.DestChainEnabled) {
@@ -112,9 +111,4 @@ func (o OnRampParams) Validate() error {
 		return fmt.Errorf("DestChainSelectors and DestChainAllowlistEnabled must have the same length")
 	}
 	return nil
-}
-
-// DeployAptosMCMSConfig is a configuration for deploying MCMS contracts for Aptos chains
-type DeployAptosMCMSConfig struct {
-	MCMSConfigPerChain map[uint64]mcmstypes.Config
 }

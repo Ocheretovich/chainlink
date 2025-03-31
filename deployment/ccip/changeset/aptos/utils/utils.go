@@ -8,10 +8,13 @@ import (
 	"github.com/smartcontractkit/chainlink/deployment"
 )
 
-// TODO: This function will be used directly, but it need to be a parameter of AptosChain
-// to be consistent to Evm/Solana pattern
-func ConfirmTx(chain deployment.AptosChain, txHash string) error {
-	userTx, err := chain.Client.WaitForTransaction(txHash)
+// ConfirmTx confirms aptos transactions
+//
+// Optional arguments:
+//   - PollPeriod: time.Duration, how often to poll for the transaction. Default 100ms.
+//   - PollTimeout: time.Duration, how long to wait for the transaction. Default 10s.
+func ConfirmTx(chain deployment.AptosChain, txHash string, opts ...any) error {
+	userTx, err := chain.Client.WaitForTransaction(txHash, opts...)
 	if err != nil {
 		return err
 	}

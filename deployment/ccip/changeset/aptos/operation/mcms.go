@@ -17,30 +17,31 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
 
-const MCMSPackageName string = "mcms" // TODO: this should be a constant imported from bindings
-
 const AcceptOwnershipProposalDescription = "Accept ownership of the contract to self"
 
 type MCMSDeploymentOperations struct {
-	Env         deployment.Environment
-	Ab          *deployment.AddressBookMap
-	AptosChain  deployment.AptosChain
-	MCMSConfigs mcmstypes.Config
-	Proposals   *[]mcms.Proposal
+	Env          deployment.Environment
+	Ab           *deployment.AddressBookMap
+	AptosChain   deployment.AptosChain
+	OnChainState changeset.AptosCCIPChainState
+	MCMSConfigs  mcmstypes.Config
+	Proposals    *[]mcms.Proposal
+	MCMSOpCount  uint64
 }
 
 func (op *MCMSDeploymentOperations) DeployMCMS() (aptos.AccountAddress, mcmsbind.MCMS, error) {
 	mcmsSeed := mcmsbind.DefaultSeed + time.Now().String()
 	addressMCMS, mcmsDeployTx, contractMCMS, err := mcmsbind.DeployToResourceAccount(op.AptosChain.DeployerSigner, op.AptosChain.Client, mcmsSeed)
 	if err != nil {
-		return aptos.AccountAddress{}, mcmsbind.MCMSContract{}, fmt.Errorf("failed to deploy MCMS contract: %v", err)
+		return aptos.AccountZero, mcmsbind.MCMSContract{}, fmt.Errorf("failed to deploy MCMS contract: %v", err)
 	}
 	if err := utils.ConfirmTx(op.AptosChain, mcmsDeployTx.Hash); err != nil {
-		return aptos.AccountAddress{}, mcmsbind.MCMSContract{}, fmt.Errorf("failed to confirm MCMS deployment transaction: %v", err)
+		return aptos.AccountZero, mcmsbind.MCMSContract{}, fmt.Errorf("failed to confirm MCMS deployment transaction: %v", err)
 	}
 
 	typeAndVersion := deployment.NewTypeAndVersion(changeset.AptosMCMSType, deployment.Version1_0_0)
 	op.Ab.Save(op.AptosChain.Selector, addressMCMS.String(), typeAndVersion)
+	op.OnChainState.MCMSAddress = addressMCMS
 	return addressMCMS, contractMCMS, nil
 }
 
