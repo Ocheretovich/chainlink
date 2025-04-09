@@ -166,6 +166,7 @@ func ApplyChangesetsV2(t *testing.T, e deployment.Environment, changesetApplicat
 			ExistingAddresses: addresses,
 			Chains:            e.Chains,
 			SolChains:         e.SolChains,
+			AptosChains:       e.AptosChains,
 			NodeIDs:           e.NodeIDs,
 			Offchain:          e.Offchain,
 			OCRSecrets:        e.OCRSecrets,

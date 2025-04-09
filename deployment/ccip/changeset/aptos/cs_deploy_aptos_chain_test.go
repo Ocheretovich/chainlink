@@ -190,7 +190,6 @@ func TestDeployAptosChainImp_VerifyPreconditions(t *testing.T) {
 }
 
 func TestDeployAptosChain_Apply(t *testing.T) {
-	t.Parallel()
 	lggr := logger.TestLogger(t)
 
 	// Setup memory environment with 1 Aptos chain
