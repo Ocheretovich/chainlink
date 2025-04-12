@@ -45,8 +45,9 @@ const (
 		  		bytes4 public constant CHAIN_FAMILY_SELECTOR_SVM = 0x1e10bdc4;
 				```
 	*/
-	EVMFamilySelector = "2812d52c"
-	SVMFamilySelector = "1e10bdc4"
+	EVMFamilySelector   = "2812d52c"
+	SVMFamilySelector   = "1e10bdc4"
+	AptosFamilySelector = "ac77ffec"
 )
 
 var (
@@ -1033,6 +1034,8 @@ func UpdateFeeQuoterDestsChangeset(e deployment.Environment, cfg UpdateFeeQuoter
 				DestChainConfig:   dc,
 			})
 		}
+		tnv, _ := fq.TypeAndVersion(nil)
+		fmt.Println(tnv)
 		tx, err := fq.ApplyDestChainConfigUpdates(txOpts, args)
 		if err != nil {
 			return deployment.ChangesetOutput{}, err
@@ -1734,6 +1737,8 @@ func DefaultFeeQuoterDestChainConfig(configEnabled bool, destChainSelector ...ui
 		destFamily, _ := chain_selectors.GetSelectorFamily(destChainSelector[0])
 		if destFamily == chain_selectors.FamilySolana {
 			familySelector, _ = hex.DecodeString(SVMFamilySelector) // solana
+		} else if destFamily == chain_selectors.FamilyAptos {
+			familySelector, _ = hex.DecodeString(AptosFamilySelector) // aptos
 		}
 	}
 	return fee_quoter.FeeQuoterDestChainConfig{
