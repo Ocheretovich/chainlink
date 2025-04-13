@@ -24,6 +24,7 @@ func TestAddAptosLanes_Apply(t *testing.T) {
 	env := deployedEnvironment.Env
 
 	emvSelector := env.AllChainSelectors()[0]
+	emvSelector2 := env.AllChainSelectors()[1]
 	aptosSelector := uint64(4457093679053095497)
 
 	// TODO: Some mocks for now
@@ -40,6 +41,7 @@ func TestAddAptosLanes_Apply(t *testing.T) {
 
 	cfg := config.UpdateAptosLanesConfig{
 		MCMSConfig: nil,
+		// Aptos1 <> EVM1 | Aptos1 -> EVM2
 		Lanes: []config.LaneConfig{
 			{
 				Source: config.AptosChainDefinition{
@@ -70,6 +72,22 @@ func TestAddAptosLanes_Apply(t *testing.T) {
 					Selector:                 aptosSelector,
 					GasPrice:                 big.NewInt(1e17),
 					FeeQuoterDestChainConfig: aptosTestDestFeeQuoterConfig(t),
+				},
+				IsDisabled: false,
+			},
+			{
+				Source: config.AptosChainDefinition{
+					Selector:                 aptosSelector,
+					GasPrice:                 big.NewInt(1e17),
+					FeeQuoterDestChainConfig: aptosTestDestFeeQuoterConfig(t),
+				},
+				Dest: config.EVMChainDefinition{
+					ChainDefinition: v1_6.ChainDefinition{
+						Selector:                 emvSelector2,
+						GasPrice:                 big.NewInt(1e17),
+						TokenPrices:              map[common.Address]*big.Int{},
+						FeeQuoterDestChainConfig: v1_6.DefaultFeeQuoterDestChainConfig(true),
+					},
 				},
 				IsDisabled: false,
 			},

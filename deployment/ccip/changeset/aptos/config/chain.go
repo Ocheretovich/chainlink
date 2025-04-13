@@ -21,6 +21,32 @@ func (c EVMChainDefinition) GetChainFamily() string {
 	return chainsel.FamilyEVM
 }
 
+func (c EVMChainDefinition) GetConvertedAptosFeeQuoterConfig() aptos_fee_quoter.DestChainConfig {
+	efqc := c.FeeQuoterDestChainConfig
+	// Handle the byte slice to fixed-size array conversion
+	return aptos_fee_quoter.DestChainConfig{
+		IsEnabled:                         efqc.IsEnabled,
+		MaxNumberOfTokensPerMsg:           efqc.MaxNumberOfTokensPerMsg,
+		MaxDataBytes:                      efqc.MaxDataBytes,
+		MaxPerMsgGasLimit:                 efqc.MaxPerMsgGasLimit,
+		DestGasOverhead:                   efqc.DestGasOverhead,
+		DestGasPerPayloadByteBase:         efqc.DestGasPerPayloadByteBase,
+		DestGasPerPayloadByteHigh:         efqc.DestGasPerPayloadByteHigh,
+		DestGasPerPayloadByteThreshold:    efqc.DestGasPerPayloadByteThreshold,
+		DestDataAvailabilityOverheadGas:   efqc.DestDataAvailabilityOverheadGas,
+		DestGasPerDataAvailabilityByte:    efqc.DestGasPerDataAvailabilityByte,
+		DestDataAvailabilityMultiplierBps: efqc.DestDataAvailabilityMultiplierBps,
+		ChainFamilySelector:               efqc.ChainFamilySelector[:],
+		EnforceOutOfOrder:                 efqc.EnforceOutOfOrder,
+		DefaultTokenFeeUsdCents:           efqc.DefaultTokenFeeUSDCents,
+		DefaultTokenDestGasOverhead:       efqc.DefaultTokenDestGasOverhead,
+		DefaultTxGasLimit:                 efqc.DefaultTxGasLimit,
+		GasMultiplierWeiPerEth:            efqc.GasMultiplierWeiPerEth,
+		GasPriceStalenessThreshold:        efqc.GasPriceStalenessThreshold,
+		NetworkFeeUsdCents:                efqc.NetworkFeeUSDCents,
+	}
+}
+
 type AptosChainDefinition struct {
 	// ConnectionConfig holds configuration for connection.
 	v1_6.ConnectionConfig `json:"connectionConfig"`

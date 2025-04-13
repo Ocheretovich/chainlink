@@ -6,7 +6,9 @@ import (
 )
 
 type AptosDeps struct {
-	AB           *deployment.AddressBookMap
-	AptosChain   deployment.AptosChain
-	OnChainState changeset.AptosCCIPChainState
+	AB         *deployment.AddressBookMap
+	AptosChain deployment.AptosChain
+	// TODO: Refactor this?
+	OnChainState     changeset.AptosCCIPChainState
+	CCIPOnChainState changeset.CCIPOnChainState
 }
