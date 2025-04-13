@@ -175,6 +175,7 @@ func (e Environment) Clone() Environment {
 		DataStore:         ds.Seal(),
 		Chains:            e.Chains,
 		SolChains:         e.SolChains,
+		AptosChains:       e.AptosChains,
 		NodeIDs:           e.NodeIDs,
 		Offchain:          e.Offchain,
 		GetContext:        e.GetContext,
