@@ -97,8 +97,8 @@ type UpdateFeeQuoterPricesInput struct {
 }
 
 type FeeQuoterPriceUpdatePerSource struct {
-	TokenPrices map[aptos.AccountAddress]*big.Int // token address -> price
-	GasPrices   map[uint64]*big.Int               // dest chain -> gas price
+	TokenPrices map[string]*big.Int // token address (string) -> price
+	GasPrices   map[uint64]*big.Int // dest chain -> gas price
 }
 
 // UpdateFeeQuoterPricesOp operation to update FeeQuoter prices
@@ -122,7 +122,12 @@ func updateFeeQuoterPrices(b operations.Bundle, deps AptosDeps, in UpdateFeeQuot
 
 	// Process token prices if any
 	for tokenAddr, price := range in.Prices.TokenPrices {
-		sourceTokens = append(sourceTokens, tokenAddr)
+		address := aptos.AccountAddress{}
+		err := address.ParseStringRelaxed(tokenAddr)
+		if err != nil {
+			return []types.Operation{}, fmt.Errorf("failed to parse Aptos token address %s: %w", tokenAddr, err)
+		}
+		sourceTokens = append(sourceTokens, address)
 		sourceUsdPerToken = append(sourceUsdPerToken, price)
 	}
 

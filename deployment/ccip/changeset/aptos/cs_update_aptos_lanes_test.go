@@ -1,45 +1,110 @@
-package aptos
+package aptos_test
 
 import (
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"testing"
 
+	"github.com/aptos-labs/aptos-go-sdk"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip"
 	aptosfeequoter "github.com/smartcontractkit/chainlink-aptos/bindings/ccip/fee_quoter"
-	"github.com/smartcontractkit/chainlink/deployment"
+
+	// "github.com/smartcontractkit/chainlink/deployment"
+
 	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset"
+	aptoscs "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/aptos"
 	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset/aptos/config"
+	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset/aptos/operation"
+	seq "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/aptos/sequence"
 	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset/testhelpers"
 	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset/v1_6"
 	commonchangeset "github.com/smartcontractkit/chainlink/deployment/common/changeset"
+	"github.com/smartcontractkit/chainlink/deployment/operations"
 	"github.com/smartcontractkit/chainlink/v2/core/capabilities/ccip/ccipevm"
+	"github.com/smartcontractkit/chainlink/v2/core/logger"
 )
+
+func TestInputSerializable(t *testing.T) {
+	input := seq.UpdateAptosLanesSeqInput{
+		UpdateFeeQuoterDestsConfig: operation.UpdateFeeQuoterDestsInput{
+			MCMSAddress: aptos.AccountAddress{},
+			Updates:     map[uint64]aptosfeequoter.DestChainConfig{},
+		},
+		UpdateFeeQuoterPricesConfig: operation.UpdateFeeQuoterPricesInput{
+			MCMSAddress: aptos.AccountAddress{},
+			Prices:      operation.FeeQuoterPriceUpdatePerSource{},
+		},
+		UpdateOnRampDestsConfig: operation.UpdateOnRampDestsInput{
+			MCMSAddress: aptos.AccountAddress{},
+			Updates:     map[uint64]v1_6.OnRampDestinationUpdate{},
+		},
+		UpdateOffRampSourcesConfig: operation.UpdateOffRampSourcesInput{
+			MCMSAddress: aptos.AccountAddress{},
+			Updates:     map[uint64]v1_6.OffRampSourceUpdate{},
+		},
+	}
+	isSer := operations.IsSerializable(logger.TestLogger(t), input)
+	fmt.Println(isSer)
+}
 
 func TestAddAptosLanes_Apply(t *testing.T) {
 	// Setup environment and config
-	deployedEnvironment, _ := testhelpers.NewMemoryEnvironment(t)
+	deployedEnvironment, _ := testhelpers.NewMemoryEnvironment(
+		t,
+		testhelpers.WithAptosChains(1),
+	)
 	env := deployedEnvironment.Env
 
 	emvSelector := env.AllChainSelectors()[0]
 	emvSelector2 := env.AllChainSelectors()[1]
 	aptosSelector := uint64(4457093679053095497)
 
-	// TODO: Some mocks for now
-	env.AptosChains = map[uint64]deployment.AptosChain{
-		aptosSelector: {
-			Selector:       aptosSelector,
-			Client:         nil,
-			DeployerSigner: nil,
-			URL:            "",
-		},
-	}
-	typeAndVersion := deployment.NewTypeAndVersion(changeset.AptosCCIPType, deployment.Version1_6_0)
-	env.ExistingAddresses.Save(aptosSelector, "0x368c3297ab04693970e2b58445110a0c3845b3710115403d9f4fbab9a75e414d", typeAndVersion)
+	// Get chain selectors
+	aptosChainSelectors := env.AllChainSelectorsAptos()
+	require.Equal(t, 1, len(aptosChainSelectors), "Expected exactly 1 Aptos chain ")
+	chainSelector := aptosChainSelectors[0]
+	t.Log("Deployer: ", env.AptosChains[chainSelector].DeployerSigner)
 
-	cfg := config.UpdateAptosLanesConfig{
+	// Deploy Lane
+	cfg := getMockUpdateConfig(t, emvSelector, emvSelector2, aptosSelector)
+
+	// Apply the changeset
+	env, err := commonchangeset.ApplyChangesetsV2(t, env, []commonchangeset.ConfiguredChangeSet{
+		commonchangeset.Configure(aptoscs.AddAptosLanes{}, cfg),
+	})
+	require.NoError(t, err)
+
+	state, err := changeset.LoadOnchainState(env)
+	require.NoError(t, err, "must load onchain state")
+
+	// bind ccip aptos
+	aptosCCIPAddr := state.AptosChains[aptosSelector].CCIPAddress
+	aptosCCIP := ccip.Bind(aptosCCIPAddr, env.AptosChains[aptosSelector].Client)
+
+	is_enabled1, sequence_number1, allowlist_enabled1, err := aptosCCIP.Onramp().GetDestChainConfig(nil, emvSelector)
+	require.NoError(t, err)
+	require.True(t, is_enabled1)
+	require.True(t, sequence_number1 > 0)
+	require.True(t, allowlist_enabled1)
+
+	is_enabled2, sequence_number2, allowlist_enabled2, err := aptosCCIP.Onramp().GetDestChainConfig(nil, emvSelector2)
+	require.NoError(t, err)
+	require.True(t, is_enabled2)
+	require.True(t, sequence_number2 > 0)
+	require.True(t, allowlist_enabled2)
+}
+
+func getMockUpdateConfig(
+	t *testing.T,
+	emvSelector,
+	emvSelector2,
+	aptosSelector uint64,
+) config.UpdateAptosLanesConfig {
+	return config.UpdateAptosLanesConfig{
 		MCMSConfig: nil,
 		// Aptos1 <> EVM1 | Aptos1 -> EVM2
 		Lanes: []config.LaneConfig{
@@ -94,12 +159,6 @@ func TestAddAptosLanes_Apply(t *testing.T) {
 		},
 		TestRouter: true,
 	}
-
-	// Apply the changeset
-	env, err := commonchangeset.ApplyChangesetsV2(t, env, []commonchangeset.ConfiguredChangeSet{
-		commonchangeset.Configure(AddAptosLanes{}, cfg),
-	})
-	require.NoError(t, err)
 }
 
 // TODO: Deduplicate these test helpers

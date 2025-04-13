@@ -70,5 +70,9 @@ func (cs AddAptosLanes) Apply(env deployment.Environment, cfg config.UpdateAptos
 
 	}
 
-	return deployment.ChangesetOutput{}, nil
+	return deployment.ChangesetOutput{
+		MCMSTimelockProposals: timeLockProposals,
+		MCMSProposals:         proposals,
+		Reports:               seqReports,
+	}, nil
 }

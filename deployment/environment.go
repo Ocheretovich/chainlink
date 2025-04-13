@@ -179,6 +179,7 @@ func (e Environment) Clone() Environment {
 		Offchain:          e.Offchain,
 		GetContext:        e.GetContext,
 		OCRSecrets:        e.OCRSecrets,
+		OperationsBundle:  e.OperationsBundle,
 	}
 }
 
