@@ -131,7 +131,7 @@ func GetChainReaderConfig() (chainreader.ChainReaderConfig, error) {
 					consts.EventNameExecutionStateChanged: {
 						EventHandleStructName: "OffRampState",
 						EventHandleFieldName:  "execution_state_changed_events",
-						EventAccountAddress:   "state_object::get_object_address",
+						EventAccountAddress:   "offramp::get_state_address",
 						EventFieldRenames: map[string]chainreader.RenamedField{
 							"source_chain_selector": {
 								NewName: "SourceChainSelector",
@@ -153,7 +153,7 @@ func GetChainReaderConfig() (chainreader.ChainReaderConfig, error) {
 					consts.EventNameCommitReportAccepted: {
 						EventHandleStructName: "OffRampState",
 						EventHandleFieldName:  "commit_report_accepted_events",
-						EventAccountAddress:   "state_object::get_object_address",
+						EventAccountAddress:   "offramp::get_state_address",
 						EventFieldRenames: map[string]chainreader.RenamedField{
 							"blessed_merkle_roots": {
 								NewName: "BlessedMerkleRoots",
