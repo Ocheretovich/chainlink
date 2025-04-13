@@ -66,8 +66,7 @@ func (cs AddAptosLanes) Apply(env deployment.Environment, cfg config.UpdateAptos
 			return deployment.ChangesetOutput{}, err
 		}
 		seqReports = append(seqReports, updateSeqReport.ExecutionReports...)
-		proposals = append(proposals, updateSeqReport.Output...)
-
+		proposals = append(proposals, updateSeqReport.Output)
 	}
 
 	return deployment.ChangesetOutput{
