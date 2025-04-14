@@ -3,8 +3,8 @@ package deployment
 import (
 	"github.com/aptos-labs/aptos-go-sdk"
 	"github.com/smartcontractkit/chainlink-aptos/bindings/bind"
-	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip"
-	module_offramp "github.com/smartcontractkit/chainlink-aptos/bindings/ccip/offramp"
+	ccip_offramp "github.com/smartcontractkit/chainlink-aptos/bindings/ccip_offramp"
+	module_offramp "github.com/smartcontractkit/chainlink-aptos/bindings/ccip_offramp/offramp"
 )
 
 // AptosChain represents an Aptos chain.
@@ -16,6 +16,6 @@ type AptosChain struct {
 }
 
 func (c AptosChain) GetOfframpDynamicConfig(ccipAddress aptos.AccountAddress) (module_offramp.DynamicConfig, error) {
-	ccipBindings := ccip.Bind(ccipAddress, c.Client)
-	return ccipBindings.Offramp().GetDynamicConfig(&bind.CallOpts{})
+	offrampBind := ccip_offramp.Bind(ccipAddress, c.Client)
+	return offrampBind.Offramp().GetDynamicConfig(&bind.CallOpts{})
 }

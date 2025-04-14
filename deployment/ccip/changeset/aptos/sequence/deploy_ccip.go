@@ -54,15 +54,29 @@ func deployCCIPSequence(b operations.Bundle, deps operation.AptosDeps, in Deploy
 	mcmsOperations = append(mcmsOperations, deployCCIPReport.Output.MCMSOperations...)
 
 	// Generate proposal to deploy Router module
-	deployRouterInput := operation.DeployRouterInput{
+	deployModulesInput := operation.DeployModulesInput{
 		MCMSAddress: in.MCMSAddress,
 		CCIPAddress: ccipAddress,
 	}
-	deployRouterReport, err := operations.ExecuteOperation(b, operation.GenerateDeployRouterProposalOp, deps, deployRouterInput)
+	deployRouterReport, err := operations.ExecuteOperation(b, operation.GenerateDeployRouterProposalOp, deps, deployModulesInput)
 	if err != nil {
 		return DeployCCIPSeqOutput{}, err
 	}
 	mcmsOperations = append(mcmsOperations, deployRouterReport.Output...)
+
+	// Generate proposal to deploy OnRamp module
+	deployOnRampReport, err := operations.ExecuteOperation(b, operation.GenerateDeployOnRampProposalOp, deps, deployModulesInput)
+	if err != nil {
+		return DeployCCIPSeqOutput{}, err
+	}
+	mcmsOperations = append(mcmsOperations, deployOnRampReport.Output...)
+
+	// Generate proposal to deploy OffRamp module
+	deployOffRampReport, err := operations.ExecuteOperation(b, operation.GenerateDeployOffRampProposalOp, deps, deployModulesInput)
+	if err != nil {
+		return DeployCCIPSeqOutput{}, err
+	}
+	mcmsOperations = append(mcmsOperations, deployOffRampReport.Output...)
 
 	// Generate proposal to initialize CCIP
 	initCCIPInput := operation.InitializeCCIPInput{

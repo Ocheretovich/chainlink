@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/aptos-labs/aptos-go-sdk"
-	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip"
+	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip_onramp"
 	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset/v1_6"
 	"github.com/smartcontractkit/chainlink/deployment/operations"
 	aptosmcms "github.com/smartcontractkit/mcms/sdk/aptos"
@@ -29,17 +29,28 @@ var UpdateOnRampDestsOp = operations.NewOperation(
 func updateOnRampDests(b operations.Bundle, deps AptosDeps, in UpdateOnRampDestsInput) ([]types.Operation, error) {
 	// Bind CCIP Package
 	ccipAddress := deps.OnChainState.CCIPAddress
-	ccipBind := ccip.Bind(ccipAddress, deps.AptosChain.Client)
+	onrampBind := ccip_onramp.Bind(ccipAddress, deps.AptosChain.Client)
 
 	// Transform the updates into the format expected by the Aptos contract
 	var destChainSelectors []uint64
-	var destChainEnabled []bool
+	var destChainRouters []aptos.AccountAddress
 	var destChainAllowlistEnabled []bool
 
 	// Process each destination chain config update
 	for destChainSelector, update := range in.Updates {
+		// destChainRouters
+		if !update.IsEnabled {
+			destChainRouters = append(destChainRouters, aptos.AccountZero)
+			continue
+		}
+		if update.TestRouter {
+			destChainRouters = append(destChainRouters, deps.OnChainState.TestRouterAddress)
+		} else {
+			destChainRouters = append(destChainRouters, deps.OnChainState.CCIPAddress)
+		}
+		// destChainSelectors
 		destChainSelectors = append(destChainSelectors, destChainSelector)
-		destChainEnabled = append(destChainEnabled, update.IsEnabled)
+		// destChainAllowlistEnabled
 		destChainAllowlistEnabled = append(destChainAllowlistEnabled, update.AllowListEnabled)
 	}
 
@@ -49,9 +60,9 @@ func updateOnRampDests(b operations.Bundle, deps AptosDeps, in UpdateOnRampDests
 	}
 
 	// Encode the update operation
-	moduleInfo, function, _, args, err := ccipBind.Onramp().Encoder().ApplyDestChainConfigUpdates(
+	moduleInfo, function, _, args, err := onrampBind.Onramp().Encoder().ApplyDestChainConfigUpdates(
 		destChainSelectors,
-		destChainEnabled,
+		destChainRouters,
 		destChainAllowlistEnabled,
 	)
 	if err != nil {

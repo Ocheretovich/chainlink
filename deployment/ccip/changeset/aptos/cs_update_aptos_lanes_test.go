@@ -8,8 +8,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip"
 	aptosfeequoter "github.com/smartcontractkit/chainlink-aptos/bindings/ccip/fee_quoter"
+	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip_offramp"
+	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip_onramp"
 
 	"github.com/smartcontractkit/chainlink-aptos/bindings/bind"
 	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset"
@@ -53,21 +54,22 @@ func TestAddAptosLanes_Apply(t *testing.T) {
 
 	// bind ccip aptos
 	aptosCCIPAddr := state.AptosChains[aptosSelector].CCIPAddress
-	aptosCCIP := ccip.Bind(aptosCCIPAddr, env.AptosChains[aptosSelector].Client)
+	aptosOnRamp := ccip_onramp.Bind(aptosCCIPAddr, env.AptosChains[aptosSelector].Client)
+	aptosOffRamp := ccip_offramp.Bind(aptosCCIPAddr, env.AptosChains[aptosSelector].Client)
 
-	dynCfg, err := aptosCCIP.Offramp().GetDynamicConfig(&bind.CallOpts{})
+	dynCfg, err := aptosOffRamp.Offramp().GetDynamicConfig(&bind.CallOpts{})
 	require.NoError(t, err)
 	require.True(t, dynCfg.PermissionlessExecutionThresholdSeconds > 0)
 
-	isSupported, err := aptosCCIP.Onramp().IsChainSupported(&bind.CallOpts{}, emvSelector)
+	isSupported, err := aptosOnRamp.Onramp().IsChainSupported(&bind.CallOpts{}, emvSelector)
 	require.NoError(t, err)
 	require.True(t, isSupported)
 
-	is_enabled1, _, _, err := aptosCCIP.Onramp().GetDestChainConfig(&bind.CallOpts{}, emvSelector)
+	_, is_enabled1, _, err := aptosOnRamp.Onramp().GetDestChainConfig(&bind.CallOpts{}, emvSelector)
 	require.NoError(t, err)
 	require.True(t, is_enabled1)
 
-	is_enabled2, _, _, err := aptosCCIP.Onramp().GetDestChainConfig(&bind.CallOpts{}, emvSelector2)
+	_, is_enabled2, _, err := aptosOnRamp.Onramp().GetDestChainConfig(&bind.CallOpts{}, emvSelector2)
 	require.NoError(t, err)
 	require.True(t, is_enabled2)
 }

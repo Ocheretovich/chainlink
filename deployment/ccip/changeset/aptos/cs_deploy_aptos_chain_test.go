@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
 
-	ccipbind "github.com/smartcontractkit/chainlink-aptos/bindings/ccip"
+	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip_offramp"
 )
 
 func TestDeployAptosChainImp_VerifyPreconditions(t *testing.T) {
@@ -227,8 +227,8 @@ func TestDeployAptosChain_Apply(t *testing.T) {
 	require.NotEmpty(t, ccipAddr, "CCIP address should not be empty")
 
 	// Bind CCIP contract
-	ccipContract := ccipbind.Bind(ccipAddr, env.AptosChains[chainSelector].Client)
-	offRampSourceConfig, err := ccipContract.Offramp().GetSourceChainConfig(nil, mockCCIPParams.OffRampParams.SourceChainSelectors[0])
+	offrampBind := ccip_offramp.Bind(ccipAddr, env.AptosChains[chainSelector].Client)
+	offRampSourceConfig, err := offrampBind.Offramp().GetSourceChainConfig(nil, mockCCIPParams.OffRampParams.SourceChainSelectors[0])
 	require.NoError(t, err)
 	require.Equal(t, true, offRampSourceConfig.IsEnabled, "contracts were not initialized correctly")
 }

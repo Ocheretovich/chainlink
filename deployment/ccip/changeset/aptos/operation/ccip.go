@@ -7,7 +7,9 @@ import (
 	"github.com/aptos-labs/aptos-go-sdk"
 	"github.com/smartcontractkit/chainlink-aptos/bindings/bind"
 	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip"
-	router "github.com/smartcontractkit/chainlink-aptos/bindings/ccip_router"
+	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip_offramp"
+	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip_onramp"
+	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip_router"
 	mcmsbind "github.com/smartcontractkit/chainlink-aptos/bindings/mcms"
 	"github.com/smartcontractkit/chainlink/deployment"
 	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset"
@@ -137,48 +139,77 @@ func getCCIPDeployMCMSOps(mcmsContract mcmsbind.MCMS, chainSel uint64) (aptos.Ac
 	return ccipObjectAddress, operations, nil
 }
 
-// GenerateDeployRouterProposal generates deployment MCMS operations for the Router module
-type DeployRouterInput struct {
+type DeployModulesInput struct {
 	MCMSAddress aptos.AccountAddress
 	CCIPAddress aptos.AccountAddress
 }
 
+// GenerateDeployRouterProposal generates deployment MCMS operations for the Router module
 var GenerateDeployRouterProposalOp = operations.NewOperation(
 	"deploy-router-op",
 	Version1_0_0,
-	"Deploys Router Package for CCIP",
-	generateDeployRouterProposal,
+	"Generates MCMS proposals that deployes Router module on CCIP package",
+	getDeployRouterMCMSOperations,
 )
 
-func generateDeployRouterProposal(b operations.Bundle, deps AptosDeps, in DeployRouterInput) ([]mcmstypes.Operation, error) {
+func getDeployRouterMCMSOperations(b operations.Bundle, deps AptosDeps, in DeployModulesInput) ([]mcmstypes.Operation, error) {
 	// TODO: is there a way to check if module exists?
-	// Compile, chunk and get Router deploy operations
 	mcmsContract := mcmsbind.Bind(in.MCMSAddress, deps.AptosChain.Client)
-	operations, err := getRouterDeployMCMSOps(mcmsContract, in.CCIPAddress, deps.AptosChain.Selector)
+	// Compile Package
+	payload, err := ccip_router.Compile(in.CCIPAddress, mcmsContract.Address(), true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to compile and create deploy operations: %w", err)
+		return []types.Operation{}, fmt.Errorf("failed to compile: %w", err)
+	}
+	// Create chunks and stage operations
+	operations, err := utils.CreateChunksAndStage(payload, mcmsContract, deps.AptosChain.Selector, "", &in.CCIPAddress)
+	if err != nil {
+		return operations, fmt.Errorf("failed to create chunks and stage for %d: %w", deps.AptosChain.Selector, err)
 	}
 
 	return operations, nil
 }
 
-func getRouterDeployMCMSOps(
-	mcmsContract mcmsbind.MCMS,
-	ccipObjectAddress aptos.AccountAddress,
-	chainSel uint64,
-) ([]types.Operation, error) {
+var GenerateDeployOffRampProposalOp = operations.NewOperation(
+	"deploy-offramp-op",
+	Version1_0_0,
+	"Generates MCMS proposals that deployes OffRamp module on CCIP package",
+	getDeployOffRampMCMSOperations,
+)
+
+func getDeployOffRampMCMSOperations(b operations.Bundle, deps AptosDeps, in DeployModulesInput) ([]mcmstypes.Operation, error) {
+	mcmsContract := mcmsbind.Bind(in.MCMSAddress, deps.AptosChain.Client)
 	// Compile Package
-	payload, err := router.Compile(ccipObjectAddress, mcmsContract.Address())
+	payload, err := ccip_offramp.Compile(in.CCIPAddress, mcmsContract.Address(), true)
 	if err != nil {
 		return []types.Operation{}, fmt.Errorf("failed to compile: %w", err)
 	}
-
 	// Create chunks and stage operations
-	operations, err := utils.CreateChunksAndStage(payload, mcmsContract, chainSel, "", &ccipObjectAddress)
+	operations, err := utils.CreateChunksAndStage(payload, mcmsContract, deps.AptosChain.Selector, "", &in.CCIPAddress)
 	if err != nil {
-		return operations, fmt.Errorf("failed to create chunks and stage for %d: %w", chainSel, err)
+		return operations, fmt.Errorf("failed to create chunks and stage for %d: %w", deps.AptosChain.Selector, err)
 	}
+	return operations, nil
+}
 
+var GenerateDeployOnRampProposalOp = operations.NewOperation(
+	"deploy-onramp-op",
+	Version1_0_0,
+	"Generates MCMS proposals that deployes OnRamp module on CCIP package",
+	getDeployOnRampMCMSOperations,
+)
+
+func getDeployOnRampMCMSOperations(b operations.Bundle, deps AptosDeps, in DeployModulesInput) ([]mcmstypes.Operation, error) {
+	mcmsContract := mcmsbind.Bind(in.MCMSAddress, deps.AptosChain.Client)
+	// Compile Package
+	payload, err := ccip.Compile(in.CCIPAddress, mcmsContract.Address(), true)
+	if err != nil {
+		return []types.Operation{}, fmt.Errorf("failed to compile: %w", err)
+	}
+	// Create chunks and stage operations
+	operations, err := utils.CreateChunksAndStage(payload, mcmsContract, deps.AptosChain.Selector, "", &in.CCIPAddress)
+	if err != nil {
+		return operations, fmt.Errorf("failed to create chunks and stage for %d: %w", deps.AptosChain.Selector, err)
+	}
 	return operations, nil
 }
 
@@ -198,14 +229,24 @@ var InitializeCCIPOp = operations.NewOperation(
 
 func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in InitializeCCIPInput) ([]types.Operation, error) {
 	var operations []types.Operation
-	ccipBind := ccip.Bind(in.CCIPAddress, deps.AptosChain.Client)
 
 	// Config OnRamp
-	moduleInfo, function, _, args, err := ccipBind.Onramp().Encoder().Initialize(
+	onrampBind := ccip_onramp.Bind(in.CCIPAddress, deps.AptosChain.Client)
+	// TODO: we should initialize with empty destchains...
+	var destChainRouters []aptos.AccountAddress
+	for _, destChainEnabled := range in.CCIPConfig.OnRampParams.DestChainEnabled {
+		if !destChainEnabled {
+			destChainRouters = append(destChainRouters, aptos.AccountZero)
+			continue
+		}
+		destChainRouters = append(destChainRouters, in.CCIPAddress)
+	}
+	moduleInfo, function, _, args, err := onrampBind.Onramp().Encoder().Initialize(
 		deps.AptosChain.Selector,
+		aptos.AccountAddress{}, // TODO: where is fee aggregator deployed?
 		in.CCIPConfig.OnRampParams.AllowlistAdmin,
 		in.CCIPConfig.OnRampParams.DestChainSelectors,
-		in.CCIPConfig.OnRampParams.DestChainEnabled,
+		destChainRouters,
 		in.CCIPConfig.OnRampParams.DestChainAllowlistEnabled,
 	)
 	if err != nil {
@@ -218,7 +259,8 @@ func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in Init
 	operations = append(operations, mcmsOp)
 
 	// Config OffRamp
-	moduleInfo, function, _, args, err = ccipBind.Offramp().Encoder().Initialize(
+	offrampBind := ccip_offramp.Bind(in.CCIPAddress, deps.AptosChain.Client)
+	moduleInfo, function, _, args, err = offrampBind.Offramp().Encoder().Initialize(
 		deps.AptosChain.Selector,
 		in.CCIPConfig.OffRampParams.PermissionlessExecutionThreshold,
 		in.CCIPConfig.OffRampParams.SourceChainSelectors,
@@ -235,7 +277,9 @@ func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in Init
 	}
 	operations = append(operations, mcmsOp)
 
-	// Config FeeQuoter
+	// Config FeeQuoter and RMNRemote
+	ccipBind := ccip.Bind(in.CCIPAddress, deps.AptosChain.Client)
+
 	moduleInfo, function, _, args, err = ccipBind.FeeQuoter().Encoder().Initialize(
 		deps.AptosChain.Selector,
 		in.CCIPConfig.FeeQuoterParams.LinkToken,
@@ -251,7 +295,6 @@ func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in Init
 	}
 	operations = append(operations, mcmsOp)
 
-	// Config RMNRemote
 	moduleInfo, function, _, args, err = ccipBind.RMNRemote().Encoder().Initialize(deps.AptosChain.Selector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode rmnremote initialize: %w", err)

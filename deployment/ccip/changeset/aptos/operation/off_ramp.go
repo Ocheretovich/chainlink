@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/aptos-labs/aptos-go-sdk"
-	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip"
+	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip_offramp"
 	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset/v1_6"
 	"github.com/smartcontractkit/chainlink/deployment/operations"
 	aptosmcms "github.com/smartcontractkit/mcms/sdk/aptos"
@@ -29,7 +29,7 @@ var UpdateOffRampSourcesOp = operations.NewOperation(
 func updateOffRampSources(b operations.Bundle, deps AptosDeps, in UpdateOffRampSourcesInput) ([]types.Operation, error) {
 	// Bind CCIP Package
 	ccipAddress := deps.OnChainState.CCIPAddress
-	ccipBind := ccip.Bind(ccipAddress, deps.AptosChain.Client)
+	offrampBind := ccip_offramp.Bind(ccipAddress, deps.AptosChain.Client)
 
 	// Transform the updates into the format expected by the Aptos contract
 	var sourceChainSelectors []uint64
@@ -55,7 +55,7 @@ func updateOffRampSources(b operations.Bundle, deps AptosDeps, in UpdateOffRampS
 	}
 
 	// Encode the update operation
-	moduleInfo, function, _, args, err := ccipBind.Offramp().Encoder().ApplySourceChainConfigUpdates(
+	moduleInfo, function, _, args, err := offrampBind.Offramp().Encoder().ApplySourceChainConfigUpdates(
 		sourceChainSelectors,
 		sourceChainEnabled,
 		sourceChainRMNVerificationDisabled,
