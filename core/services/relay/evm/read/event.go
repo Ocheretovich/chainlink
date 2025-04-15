@@ -14,6 +14,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
 
+	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/latest/offramp"
+	"github.com/smartcontractkit/chainlink-ccip/pkg/reader"
+
 	commoncodec "github.com/smartcontractkit/chainlink-common/pkg/codec"
 	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types"
 	"github.com/smartcontractkit/chainlink-common/pkg/types/query"
@@ -499,6 +502,11 @@ func (b *EventBinding) hashTopics(topicTypeID string, topics []any) ([]common.Ha
 }
 
 func (b *EventBinding) decodeLog(ctx context.Context, log *logpoller.Log, into any) error {
+	if isTypeHardcoded(into) {
+		// handle hardcoded decoding
+		return decodeHardcodedType(into, log)
+
+	}
 	// decode non indexed topics and apply output modifiers
 	if err := b.codec.Decode(ctx, log.Data, into, codec.WrapItemType(b.contractName, b.eventName, false)); err != nil {
 		return fmt.Errorf("%w: failed to decode log data: %s", commontypes.ErrInvalidType, err.Error())
@@ -802,4 +810,64 @@ func (b *EventBinding) registered() bool {
 	defer b.mu.RUnlock()
 
 	return b.registerCalled
+}
+
+// dirty hack to handle cpu usage issue of dynamic type decoder
+// https://smartcontract-it.atlassian.net/browse/CCIP-5348
+var offrampABI, _ = abi.JSON(strings.NewReader(offramp.OffRampABI))
+
+func isTypeHardcoded(t any) bool {
+	switch t.(type) {
+	case *reader.CommitReportAcceptedEvent:
+		return true
+	}
+
+	return false
+}
+
+func decodeHardcodedType(out any, log *logpoller.Log) error {
+	switch out.(type) {
+	case *reader.CommitReportAcceptedEvent:
+		var event offramp.OffRampCommitReportAccepted
+		return unpackLog(&event, "", log, offrampABI)
+	}
+
+	// return error here in case type is not supported
+	return nil
+}
+
+func unpackLog(out any, event string, log *logpoller.Log, hcabi abi.ABI) error {
+	if len(log.Topics) == 0 {
+		// TODO think of error
+		return nil
+	}
+
+	if common.BytesToHash(log.Topics[0]) != hcabi.Events[event].ID {
+		// TODO think of error
+		return nil
+	}
+
+	if len(log.Data) > 0 {
+		if err := hcabi.UnpackIntoInterface(out, event, log.Data); err != nil {
+			return err
+		}
+	}
+
+	var indexed abi.Arguments
+	for _, arg := range hcabi.Events[event].Inputs {
+		if arg.Indexed {
+			indexed = append(indexed, arg)
+		}
+	}
+
+	if len(indexed) == 0 {
+		return nil
+	}
+
+	topics := make([]common.Hash, 0)
+	for _, topic := range log.Topics[1:] {
+		topics = append(topics, common.BytesToHash(topic))
+	}
+
+	return abi.ParseTopics(out, indexed, topics)
 }
