@@ -822,7 +822,7 @@ func decodeHardcodedType(out any, log *logpoller.Log) error {
 	switch out.(type) {
 	case *reader.CommitReportAcceptedEvent:
 		var event offramp.OffRampCommitReportAccepted
-		return unpackLog(&event, "", log, offrampABI)
+		return unpackLog(&event, "CommitReportAccepted", log, offrampABI)
 	}
 
 	// return error here in case type is not supported
