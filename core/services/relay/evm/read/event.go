@@ -819,7 +819,7 @@ func isTypeHardcoded(t any) bool {
 	case *reader.CommitReportAcceptedEvent:
 		return true
 	case *reader.SendRequestedEvent:
-		return true
+		return false
 	}
 
 	return false
