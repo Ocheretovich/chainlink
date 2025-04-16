@@ -895,14 +895,12 @@ func populateSendRequestFromEvent(out *reader.SendRequestedEvent, internalEvent 
 func convertOnRampCCIPMessage(m onramp.InternalEVM2AnyRampMessage) ccipocr3.Message {
 	var out ccipocr3.Message
 
-	{
-		// header population. NOTE OnRamp and MsgHash will be populater by the CR caller
-		out.Header.DestChainSelector = ccipocr3.ChainSelector(m.Header.DestChainSelector)
-		out.Header.SourceChainSelector = ccipocr3.ChainSelector(m.Header.SourceChainSelector)
-		out.Header.SequenceNumber = ccipocr3.SeqNum(m.Header.SequenceNumber)
-		out.Header.MessageID = m.Header.MessageId
-		out.Header.Nonce = m.Header.Nonce
-	}
+	// header population. NOTE OnRamp and MsgHash will be populater by the CR caller
+	out.Header.DestChainSelector = ccipocr3.ChainSelector(m.Header.DestChainSelector)
+	out.Header.SourceChainSelector = ccipocr3.ChainSelector(m.Header.SourceChainSelector)
+	out.Header.SequenceNumber = ccipocr3.SeqNum(m.Header.SequenceNumber)
+	out.Header.MessageID = m.Header.MessageId
+	out.Header.Nonce = m.Header.Nonce
 
 	out.Sender = m.Sender.Bytes()
 	out.Data = m.Data
@@ -911,7 +909,7 @@ func convertOnRampCCIPMessage(m onramp.InternalEVM2AnyRampMessage) ccipocr3.Mess
 	out.FeeTokenAmount = ccipocr3.NewBigInt(m.FeeTokenAmount)
 	out.FeeValueJuels = ccipocr3.NewBigInt(m.FeeValueJuels)
 
-	out.TokenAmounts = make([]ccipocr3.RampTokenAmount, len(m.TokenAmounts))
+	out.TokenAmounts = make([]ccipocr3.RampTokenAmount, 0, len(m.TokenAmounts))
 	for _, amount := range m.TokenAmounts {
 		out.TokenAmounts = append(out.TokenAmounts, ccipocr3.RampTokenAmount{
 			SourcePoolAddress: amount.SourcePoolAddress.Bytes(),
