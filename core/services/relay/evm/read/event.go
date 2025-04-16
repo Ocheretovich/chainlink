@@ -809,6 +809,8 @@ func (b *EventBinding) registered() bool {
 // https://smartcontract-it.atlassian.net/browse/CCIP-5348
 var offrampABI, _ = abi.JSON(strings.NewReader(offramp.OffRampABI))
 
+const commitReportAcceptedEvent = "CommitReportAccepted"
+
 func isTypeHardcoded(t any) bool {
 	switch t.(type) {
 	case *reader.CommitReportAcceptedEvent:
@@ -819,10 +821,17 @@ func isTypeHardcoded(t any) bool {
 }
 
 func decodeHardcodedType(out any, log *logpoller.Log) error {
-	switch out.(type) {
+	switch out := out.(type) {
 	case *reader.CommitReportAcceptedEvent:
-		var event offramp.OffRampCommitReportAccepted
-		return unpackLog(&event, "CommitReportAccepted", log, offrampABI)
+		var internalEvent offramp.OffRampCommitReportAccepted
+		err := unpackLog(&internalEvent, commitReportAcceptedEvent, log, offrampABI)
+		if err != nil {
+			return err
+		}
+
+		populateCommitReportAcceptFromEvent(out, internalEvent)
+
+		return nil
 	}
 
 	// return error here in case type is not supported
@@ -858,10 +867,45 @@ func unpackLog(out any, event string, log *logpoller.Log, hcabi abi.ABI) error {
 		return nil
 	}
 
-	topics := make([]common.Hash, 0)
-	for _, topic := range log.Topics[1:] {
-		topics = append(topics, common.BytesToHash(topic))
+	return abi.ParseTopics(out, indexed, log.GetTopics()[1:])
+}
+
+func populateCommitReportAcceptFromEvent(out *reader.CommitReportAcceptedEvent, internalEvent offramp.OffRampCommitReportAccepted) {
+	out.BlessedMerkleRoots = convertRoots(internalEvent.BlessedMerkleRoots)
+	out.UnblessedMerkleRoots = convertRoots(internalEvent.UnblessedMerkleRoots)
+
+	for _, update := range internalEvent.PriceUpdates.TokenPriceUpdates {
+		out.PriceUpdates.TokenPriceUpdates = append(out.PriceUpdates.TokenPriceUpdates,
+			reader.TokenPriceUpdate{
+				SourceToken: update.SourceToken.Bytes(),
+				UsdPerToken: update.UsdPerToken,
+			},
+		)
 	}
 
-	return abi.ParseTopics(out, indexed, topics)
+	for _, update := range internalEvent.PriceUpdates.GasPriceUpdates {
+		out.PriceUpdates.GasPriceUpdates = append(out.PriceUpdates.GasPriceUpdates,
+			reader.GasPriceUpdate(update),
+		)
+	}
+
+}
+
+func convertRoots(r []offramp.InternalMerkleRoot) []reader.MerkleRoot {
+	res := make([]reader.MerkleRoot, 0, len(r))
+	for _, root := range r {
+		res = append(res, convertRoot(root))
+	}
+
+	return res
+}
+
+func convertRoot(r offramp.InternalMerkleRoot) reader.MerkleRoot {
+	return reader.MerkleRoot{
+		SourceChainSelector: r.SourceChainSelector,
+		OnRampAddress:       r.OnRampAddress,
+		MinSeqNr:            r.MinSeqNr,
+		MaxSeqNr:            r.MaxSeqNr,
+		MerkleRoot:          r.MerkleRoot,
+	}
 }
