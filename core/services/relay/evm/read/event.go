@@ -775,13 +775,6 @@ func wrapInternalErr(err error) error {
 	return fmt.Errorf("%w: %s", commontypes.ErrInternal, err.Error())
 }
 
-func (b *EventBinding) hasBindings() bool {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	return len(b.bound) > 0
-}
-
 func (b *EventBinding) isBound(binding common.Address) bool {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
@@ -833,18 +826,20 @@ func decodeHardcodedType(out any, log *logpoller.Log) error {
 	}
 
 	// return error here in case type is not supported
-	return nil
+	return fmt.Errorf("wrong type was passed for hardcode decoding %T", out)
 }
 
 func unpackLog(out any, event string, log *logpoller.Log, hcabi abi.ABI) error {
 	if len(log.Topics) == 0 {
 		// TODO think of error
-		return nil
+		return fmt.Errorf("log has no topics to decode")
 	}
 
-	if common.BytesToHash(log.Topics[0]) != hcabi.Events[event].ID {
-		// TODO think of error
-		return nil
+	logID := common.BytesToHash(log.Topics[0])
+	abiEventID := hcabi.Events[event].ID
+
+	if logID != abiEventID {
+		return fmt.Errorf("log ID %s doesnt match abi ID %s", logID, abiEventID)
 	}
 
 	if len(log.Data) > 0 {
