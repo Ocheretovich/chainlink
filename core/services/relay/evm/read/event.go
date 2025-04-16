@@ -819,7 +819,7 @@ func isTypeHardcoded(t any) bool {
 	case *reader.CommitReportAcceptedEvent:
 		return true
 	case *reader.SendRequestedEvent:
-		return false
+		return true
 	}
 
 	return false
@@ -908,6 +908,7 @@ func convertOnRampCCIPMessage(m onramp.InternalEVM2AnyRampMessage) ccipocr3.Mess
 	out.ExtraArgs = m.ExtraArgs
 	out.FeeTokenAmount = ccipocr3.NewBigInt(m.FeeTokenAmount)
 	out.FeeValueJuels = ccipocr3.NewBigInt(m.FeeValueJuels)
+	out.FeeToken = m.FeeToken.Bytes()
 
 	out.TokenAmounts = make([]ccipocr3.RampTokenAmount, 0, len(m.TokenAmounts))
 	for _, amount := range m.TokenAmounts {

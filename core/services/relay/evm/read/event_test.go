@@ -46,6 +46,7 @@ func Test_DecodeHardcodedType(t *testing.T) {
 		require.Equal(t, ccipocr3.SeqNum(fixtLog.SequenceNumber), out.SequenceNumber)
 		require.Equal(t, ccipocr3.ChainSelector(fixtLog.DestChainSelector), out.DestChainSelector)
 		require.Equal(t, true, bytes.Equal(fixtLog.Message.Data, out.Message.Data))
+		require.Equal(t, true, bytes.Equal(fixtLog.Message.FeeToken.Bytes(), out.Message.FeeToken[:]))
 		require.Equal(t, len(fixtLog.Message.TokenAmounts), len(out.Message.TokenAmounts))
 	})
 }
