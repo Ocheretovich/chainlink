@@ -32,12 +32,6 @@ import (
 	datastreamsllo "github.com/smartcontractkit/chainlink-data-streams/llo"
 	kcr "github.com/smartcontractkit/chainlink-evm/gethwrappers/keystone/generated/capabilities_registry_1_1_0"
 	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/jd"
-	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
-	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"github.com/smartcontractkit/chainlink/deployment/environment/nodeclient"
 	keystone_changeset "github.com/smartcontractkit/chainlink/deployment/keystone/changeset"
 	cldlogger "github.com/smartcontractkit/chainlink/deployment/logger"
@@ -56,7 +50,24 @@ import (
 	"github.com/smartcontractkit/chainlink/v2/core/services/keystore/keys/ocr2key"
 	"github.com/smartcontractkit/chainlink/v2/core/services/llo/cre"
 	"github.com/smartcontractkit/chainlink/v2/core/services/relay/evm"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/jd"
+	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
+
+type Chaos struct {
+	Mode                        string   `toml:"mode"`
+	Latency                     string   `toml:"latency"`
+	Jitter                      string   `toml:"latency"`
+	DashboardUIDs               []string `toml:"dashboard_uids"`
+	WaitBeforeStart             string   `toml:"wait_before_start"`
+	ExperimentFullInterval      string   `toml:"experiment_full_interval"`
+	ExperimentInjectionInterval string   `toml:"experiment_injection_interval"`
+}
 
 type TestConfigLoadTest struct {
 	BlockchainA                   *blockchain.Input                        `toml:"blockchain_a" validate:"required"`
@@ -69,6 +80,7 @@ type TestConfigLoadTest struct {
 	WorkflowDONLoad               *WorkflowLoad                            `toml:"workflow_load"`
 	MockCapabilities              []*MockCapabilities                      `toml:"mock_capabilities"`
 	BinariesConfig                *BinariesConfig                          `toml:"binaries_config"`
+	Chaos                         *Chaos                                   `toml:"chaos"`
 }
 
 type BinariesConfig struct {
@@ -402,6 +414,8 @@ func TestLoad_Workflow_Streams_MockCapabilities(t *testing.T) {
 
 	receiveChannel := make(chan capabilities.CapabilityRequest, 1000)
 	require.NoError(t, mocksClient.HookExecutables(ctx, receiveChannel), "could not hook into mock executable")
+
+	go runChaosSuite(t, in)
 
 	labels := map[string]string{
 		"go_test_name": "test1",
