@@ -831,7 +831,6 @@ func decodeHardcodedType(out any, log *logpoller.Log) error {
 
 func unpackLog(out any, event string, log *logpoller.Log, hcabi abi.ABI) error {
 	if len(log.Topics) == 0 {
-		// TODO think of error
 		return fmt.Errorf("log has no topics to decode")
 	}
 
