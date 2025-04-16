@@ -216,6 +216,7 @@ func RunContractReaderInLoopTests[T TestingT[T]](t T, it ChainComponentsInterfac
 				ctx := tests.Context(t)
 				boundContract := BindingsByName(bindings, AnyContractName)[0]
 				require.NoError(t, cr.Bind(ctx, bindings))
+
 				ts1 := CreateTestStruct[T](0, it)
 				_ = SubmitTransactionToCW(t, it, cw, MethodTriggeringEvent, ts1, boundContract, types.Unconfirmed)
 				ts2 := CreateTestStruct[T](15, it)

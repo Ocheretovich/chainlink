@@ -15,7 +15,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/latest/offramp"
+	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/latest/onramp"
 	"github.com/smartcontractkit/chainlink-ccip/pkg/reader"
+	"github.com/smartcontractkit/chainlink-ccip/pkg/types/ccipocr3"
 
 	commoncodec "github.com/smartcontractkit/chainlink-common/pkg/codec"
 	commontypes "github.com/smartcontractkit/chainlink-common/pkg/types"
@@ -805,15 +807,18 @@ func (b *EventBinding) registered() bool {
 	return b.registerCalled
 }
 
-// dirty hack to handle cpu usage issue of dynamic type decoder
-// https://smartcontract-it.atlassian.net/browse/CCIP-5348
+// dirty hack to handle cpu usage issue of dynamic type decoder CCIP-5348
 var offrampABI, _ = abi.JSON(strings.NewReader(offramp.OffRampABI))
+var onrampABI, _ = abi.JSON(strings.NewReader(onramp.OnRampABI))
 
 const commitReportAcceptedEvent = "CommitReportAccepted"
+const ccipMessageSentEvent = "CCIPMessageSent"
 
 func isTypeHardcoded(t any) bool {
 	switch t.(type) {
 	case *reader.CommitReportAcceptedEvent:
+		return true
+	case *reader.SendRequestedEvent:
 		return true
 	}
 
@@ -830,6 +835,16 @@ func decodeHardcodedType(out any, log *logpoller.Log) error {
 		}
 
 		populateCommitReportAcceptFromEvent(out, internalEvent)
+
+		return nil
+	case *reader.SendRequestedEvent:
+		var internalEvent onramp.OnRampCCIPMessageSent
+		err := unpackLog(&internalEvent, ccipMessageSentEvent, log, onrampABI)
+		if err != nil {
+			return err
+		}
+
+		populateSendRequestFromEvent(out, internalEvent)
 
 		return nil
 	}
@@ -868,6 +883,46 @@ func unpackLog(out any, event string, log *logpoller.Log, hcabi abi.ABI) error {
 	}
 
 	return abi.ParseTopics(out, indexed, log.GetTopics()[1:])
+}
+
+func populateSendRequestFromEvent(out *reader.SendRequestedEvent, internalEvent onramp.OnRampCCIPMessageSent) {
+	out.DestChainSelector = ccipocr3.ChainSelector(internalEvent.DestChainSelector)
+	out.SequenceNumber = ccipocr3.SeqNum(internalEvent.SequenceNumber)
+
+	out.Message = convertOnRampCCIPMessage(internalEvent.Message)
+}
+
+func convertOnRampCCIPMessage(m onramp.InternalEVM2AnyRampMessage) ccipocr3.Message {
+	var out ccipocr3.Message
+
+	{
+		// header population. NOTE OnRamp and MsgHash will be populater by the CR caller
+		out.Header.DestChainSelector = ccipocr3.ChainSelector(m.Header.DestChainSelector)
+		out.Header.SourceChainSelector = ccipocr3.ChainSelector(m.Header.SourceChainSelector)
+		out.Header.SequenceNumber = ccipocr3.SeqNum(m.Header.SequenceNumber)
+		out.Header.MessageID = m.Header.MessageId
+		out.Header.Nonce = m.Header.Nonce
+	}
+
+	out.Sender = m.Sender.Bytes()
+	out.Data = m.Data
+	out.Receiver = m.Receiver
+	out.ExtraArgs = m.ExtraArgs
+	out.FeeTokenAmount = ccipocr3.NewBigInt(m.FeeTokenAmount)
+	out.FeeValueJuels = ccipocr3.NewBigInt(m.FeeValueJuels)
+
+	out.TokenAmounts = make([]ccipocr3.RampTokenAmount, len(m.TokenAmounts))
+	for _, amount := range m.TokenAmounts {
+		out.TokenAmounts = append(out.TokenAmounts, ccipocr3.RampTokenAmount{
+			SourcePoolAddress: amount.SourcePoolAddress.Bytes(),
+			ExtraData:         amount.ExtraData,
+			DestTokenAddress:  amount.DestTokenAddress,
+			Amount:            ccipocr3.NewBigInt(amount.Amount),
+			DestExecData:      amount.DestExecData,
+		})
+	}
+
+	return out
 }
 
 func populateCommitReportAcceptFromEvent(out *reader.CommitReportAcceptedEvent, internalEvent offramp.OffRampCommitReportAccepted) {
