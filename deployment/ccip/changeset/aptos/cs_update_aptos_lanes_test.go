@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/aptos-labs/aptos-go-sdk"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
@@ -65,13 +66,13 @@ func TestAddAptosLanes_Apply(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, isSupported)
 
-	_, is_enabled1, _, err := aptosOnRamp.Onramp().GetDestChainConfig(&bind.CallOpts{}, emvSelector)
+	_, _, router, err := aptosOnRamp.Onramp().GetDestChainConfig(&bind.CallOpts{}, emvSelector)
 	require.NoError(t, err)
-	require.True(t, is_enabled1)
+	require.NotEqual(t, router, aptos.AccountZero)
 
-	_, is_enabled2, _, err := aptosOnRamp.Onramp().GetDestChainConfig(&bind.CallOpts{}, emvSelector2)
+	_, _, router2, err := aptosOnRamp.Onramp().GetDestChainConfig(&bind.CallOpts{}, emvSelector2)
 	require.NoError(t, err)
-	require.True(t, is_enabled2)
+	require.NotEqual(t, router2, aptos.AccountZero)
 }
 
 func getMockUpdateConfig(
@@ -133,7 +134,7 @@ func getMockUpdateConfig(
 				IsDisabled: false,
 			},
 		},
-		TestRouter: true,
+		TestRouter: false,
 	}
 }
 

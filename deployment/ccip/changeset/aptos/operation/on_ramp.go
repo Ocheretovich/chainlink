@@ -26,7 +26,7 @@ var UpdateOnRampDestsOp = operations.NewOperation(
 	updateOnRampDests,
 )
 
-func updateOnRampDests(b operations.Bundle, deps AptosDeps, in UpdateOnRampDestsInput) ([]types.Operation, error) {
+func updateOnRampDests(b operations.Bundle, deps AptosDeps, in UpdateOnRampDestsInput) ([]types.Transaction, error) {
 	// Bind CCIP Package
 	ccipAddress := deps.OnChainState.CCIPAddress
 	onrampBind := ccip_onramp.Bind(ccipAddress, deps.AptosChain.Client)
@@ -56,7 +56,7 @@ func updateOnRampDests(b operations.Bundle, deps AptosDeps, in UpdateOnRampDests
 
 	if len(destChainSelectors) == 0 {
 		b.Logger.Infow("No OnRamp destination updates to apply")
-		return []types.Operation{}, nil
+		return nil, nil
 	}
 
 	// Encode the update operation
@@ -66,7 +66,7 @@ func updateOnRampDests(b operations.Bundle, deps AptosDeps, in UpdateOnRampDests
 		destChainAllowlistEnabled,
 	)
 	if err != nil {
-		return []types.Operation{}, fmt.Errorf("failed to encode ApplyDestChainConfigUpdates for OnRamp: %w", err)
+		return nil, fmt.Errorf("failed to encode ApplyDestChainConfigUpdates for OnRamp: %w", err)
 	}
 
 	// Create MCMS operation
@@ -77,20 +77,15 @@ func updateOnRampDests(b operations.Bundle, deps AptosDeps, in UpdateOnRampDests
 	}
 	afBytes, err := json.Marshal(additionalFields)
 	if err != nil {
-		return []types.Operation{}, fmt.Errorf("failed to marshal additional fields: %w", err)
-	}
-
-	operation := types.Operation{
-		ChainSelector: types.ChainSelector(deps.AptosChain.Selector),
-		Transaction: types.Transaction{
-			To:               ccipAddress.StringLong(),
-			Data:             aptosmcms.ArgsToData(args),
-			AdditionalFields: afBytes,
-		},
+		return nil, fmt.Errorf("failed to marshal additional fields: %w", err)
 	}
 
 	b.Logger.Infow("Adding OnRamp destination config update operation",
 		"chainCount", len(destChainSelectors))
 
-	return []types.Operation{operation}, nil
+	return []types.Transaction{{
+		To:               ccipAddress.StringLong(),
+		Data:             aptosmcms.ArgsToData(args),
+		AdditionalFields: afBytes,
+	}}, nil
 }

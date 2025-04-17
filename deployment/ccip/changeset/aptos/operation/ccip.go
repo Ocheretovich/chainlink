@@ -18,7 +18,6 @@ import (
 	"github.com/smartcontractkit/chainlink/deployment/operations"
 	aptosmcms "github.com/smartcontractkit/mcms/sdk/aptos"
 	"github.com/smartcontractkit/mcms/types"
-	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
 
 // CleanupStagingArea Operation
@@ -33,15 +32,15 @@ var CleanupStagingAreaOp = operations.NewOperation(
 	cleanupStagingArea,
 )
 
-func cleanupStagingArea(b operations.Bundle, deps AptosDeps, in CleanupStagingAreaInput) ([]mcmstypes.Operation, error) {
+func cleanupStagingArea(b operations.Bundle, deps AptosDeps, in CleanupStagingAreaInput) (types.BatchOperation, error) {
 	// Check resources first to see if staging is clean
 	IsMCMSStagingAreaClean, err := utils.IsMCMSStagingAreaClean(deps.AptosChain.Client, in.MCMSAddress)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check if MCMS staging area is clean: %w", err)
+		return types.BatchOperation{}, fmt.Errorf("failed to check if MCMS staging area is clean: %w", err)
 	}
 	if IsMCMSStagingAreaClean {
 		b.Logger.Infow("MCMS Staging Area already clean", "addr", in.MCMSAddress.String())
-		return nil, nil
+		return types.BatchOperation{}, nil
 	}
 
 	// Bind MCMS contract
@@ -49,10 +48,9 @@ func cleanupStagingArea(b operations.Bundle, deps AptosDeps, in CleanupStagingAr
 	mcmsAddress := mcmsContract.Address()
 
 	// Get cleanup staging operations
-	var operations []types.Operation
 	moduleInfo, function, _, args, err := mcmsContract.MCMSDeployer().Encoder().CleanupStagingArea()
 	if err != nil {
-		return nil, fmt.Errorf("failed to EncodeCleanupStagingArea: %w", err)
+		return types.BatchOperation{}, fmt.Errorf("failed to EncodeCleanupStagingArea: %w", err)
 	}
 	additionalFields := aptosmcms.AdditionalFields{
 		PackageName: moduleInfo.PackageName,
@@ -61,18 +59,17 @@ func cleanupStagingArea(b operations.Bundle, deps AptosDeps, in CleanupStagingAr
 	}
 	afBytes, err := json.Marshal(additionalFields)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal additional fields: %w", err)
+		return types.BatchOperation{}, fmt.Errorf("failed to marshal additional fields: %w", err)
 	}
-	operations = append(operations, types.Operation{
+
+	return types.BatchOperation{
 		ChainSelector: types.ChainSelector(deps.AptosChain.Selector),
-		Transaction: types.Transaction{
+		Transactions: []types.Transaction{{
 			To:               mcmsAddress.StringLong(),
 			Data:             aptosmcms.ArgsToData(args),
 			AdditionalFields: afBytes,
-		},
-	})
-
-	return operations, nil
+		}},
+	}, nil
 }
 
 // GenerateDeployCCIPProposal Operation generates deployment MCMS operations for the CCIP package
@@ -82,7 +79,7 @@ type DeployCCIPInput struct {
 
 type DeployCCIPOutput struct {
 	CCIPAddress    aptos.AccountAddress
-	MCMSOperations []mcmstypes.Operation
+	MCMSOperations []types.Operation
 }
 
 var GenerateDeployCCIPProposalOp = operations.NewOperation(
@@ -152,7 +149,7 @@ var GenerateDeployRouterProposalOp = operations.NewOperation(
 	getDeployRouterMCMSOperations,
 )
 
-func getDeployRouterMCMSOperations(b operations.Bundle, deps AptosDeps, in DeployModulesInput) ([]mcmstypes.Operation, error) {
+func getDeployRouterMCMSOperations(b operations.Bundle, deps AptosDeps, in DeployModulesInput) ([]types.Operation, error) {
 	// TODO: is there a way to check if module exists?
 	mcmsContract := mcmsbind.Bind(in.MCMSAddress, deps.AptosChain.Client)
 	// Compile Package
@@ -176,7 +173,7 @@ var GenerateDeployOffRampProposalOp = operations.NewOperation(
 	getDeployOffRampMCMSOperations,
 )
 
-func getDeployOffRampMCMSOperations(b operations.Bundle, deps AptosDeps, in DeployModulesInput) ([]mcmstypes.Operation, error) {
+func getDeployOffRampMCMSOperations(b operations.Bundle, deps AptosDeps, in DeployModulesInput) ([]types.Operation, error) {
 	mcmsContract := mcmsbind.Bind(in.MCMSAddress, deps.AptosChain.Client)
 	// Compile Package
 	payload, err := ccip_offramp.Compile(in.CCIPAddress, mcmsContract.Address(), true)
@@ -198,10 +195,10 @@ var GenerateDeployOnRampProposalOp = operations.NewOperation(
 	getDeployOnRampMCMSOperations,
 )
 
-func getDeployOnRampMCMSOperations(b operations.Bundle, deps AptosDeps, in DeployModulesInput) ([]mcmstypes.Operation, error) {
+func getDeployOnRampMCMSOperations(b operations.Bundle, deps AptosDeps, in DeployModulesInput) ([]types.Operation, error) {
 	mcmsContract := mcmsbind.Bind(in.MCMSAddress, deps.AptosChain.Client)
 	// Compile Package
-	payload, err := ccip.Compile(in.CCIPAddress, mcmsContract.Address(), true)
+	payload, err := ccip_onramp.Compile(in.CCIPAddress, mcmsContract.Address(), true)
 	if err != nil {
 		return []types.Operation{}, fmt.Errorf("failed to compile: %w", err)
 	}
@@ -227,8 +224,8 @@ var InitializeCCIPOp = operations.NewOperation(
 	generateInitializeCCIPProposal,
 )
 
-func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in InitializeCCIPInput) ([]types.Operation, error) {
-	var operations []types.Operation
+func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in InitializeCCIPInput) (types.BatchOperation, error) {
+	var txs []types.Transaction
 
 	// Config OnRamp
 	onrampBind := ccip_onramp.Bind(in.CCIPAddress, deps.AptosChain.Client)
@@ -250,13 +247,13 @@ func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in Init
 		in.CCIPConfig.OnRampParams.DestChainAllowlistEnabled,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode onramp initialize: %w", err)
+		return types.BatchOperation{}, fmt.Errorf("failed to encode onramp initialize: %w", err)
 	}
-	mcmsOp, err := generateMCMSOperation(deps.AptosChain.Selector, in.CCIPAddress, moduleInfo, function, args)
+	mcmsTx, err := generateMCMSTx(in.CCIPAddress, moduleInfo, function, args)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate MCMS operations for OnRamp Initialize: %w", err)
+		return types.BatchOperation{}, fmt.Errorf("failed to generate MCMS operations for OnRamp Initialize: %w", err)
 	}
-	operations = append(operations, mcmsOp)
+	txs = append(txs, mcmsTx)
 
 	// Config OffRamp
 	offrampBind := ccip_offramp.Bind(in.CCIPAddress, deps.AptosChain.Client)
@@ -269,13 +266,13 @@ func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in Init
 		in.CCIPConfig.OffRampParams.SourceChainsOnRamp,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode offramp initialize: %w", err)
+		return types.BatchOperation{}, fmt.Errorf("failed to encode offramp initialize: %w", err)
 	}
-	mcmsOp, err = generateMCMSOperation(deps.AptosChain.Selector, in.CCIPAddress, moduleInfo, function, args)
+	mcmsTx, err = generateMCMSTx(in.CCIPAddress, moduleInfo, function, args)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate MCMS operations for OffRamp Initialize: %w", err)
+		return types.BatchOperation{}, fmt.Errorf("failed to generate MCMS operations for OffRamp Initialize: %w", err)
 	}
-	operations = append(operations, mcmsOp)
+	txs = append(txs, mcmsTx)
 
 	// Config FeeQuoter and RMNRemote
 	ccipBind := ccip.Bind(in.CCIPAddress, deps.AptosChain.Client)
@@ -287,30 +284,32 @@ func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in Init
 		in.CCIPConfig.FeeQuoterParams.FeeTokens,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode feequoter initialize: %w", err)
+		return types.BatchOperation{}, fmt.Errorf("failed to encode feequoter initialize: %w", err)
 	}
-	mcmsOp, err = generateMCMSOperation(deps.AptosChain.Selector, in.CCIPAddress, moduleInfo, function, args)
+	mcmsTx, err = generateMCMSTx(in.CCIPAddress, moduleInfo, function, args)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate MCMS operations for FeeQuoter Initialize: %w", err)
+		return types.BatchOperation{}, fmt.Errorf("failed to generate MCMS operations for FeeQuoter Initialize: %w", err)
 	}
-	operations = append(operations, mcmsOp)
+	txs = append(txs, mcmsTx)
 
 	moduleInfo, function, _, args, err = ccipBind.RMNRemote().Encoder().Initialize(deps.AptosChain.Selector)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode rmnremote initialize: %w", err)
+		return types.BatchOperation{}, fmt.Errorf("failed to encode rmnremote initialize: %w", err)
 	}
-	mcmsOp, err = generateMCMSOperation(deps.AptosChain.Selector, in.CCIPAddress, moduleInfo, function, args)
+	mcmsTx, err = generateMCMSTx(in.CCIPAddress, moduleInfo, function, args)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate MCMS operations for RMNRemote Initialize: %w", err)
+		return types.BatchOperation{}, fmt.Errorf("failed to generate MCMS operations for RMNRemote Initialize: %w", err)
 	}
-	operations = append(operations, mcmsOp)
+	txs = append(txs, mcmsTx)
 
-	return operations, nil
-
+	return types.BatchOperation{
+		ChainSelector: types.ChainSelector(deps.AptosChain.Selector),
+		Transactions:  txs,
+	}, nil
 }
 
-// generateMCMSOperation is a helper function that generates a MCMS operation for the given parameters
-func generateMCMSOperation(chainSel uint64, toAddress aptos.AccountAddress, moduleInfo bind.ModuleInformation, function string, args [][]byte) (types.Operation, error) {
+// generateMCMSTx is a helper function that generates a MCMS txs for the given parameters
+func generateMCMSTx(toAddress aptos.AccountAddress, moduleInfo bind.ModuleInformation, function string, args [][]byte) (types.Transaction, error) {
 	additionalFields := aptosmcms.AdditionalFields{
 		PackageName: moduleInfo.PackageName,
 		ModuleName:  moduleInfo.ModuleName,
@@ -318,14 +317,11 @@ func generateMCMSOperation(chainSel uint64, toAddress aptos.AccountAddress, modu
 	}
 	afBytes, err := json.Marshal(additionalFields)
 	if err != nil {
-		return types.Operation{}, fmt.Errorf("failed to marshal additional fields: %w", err)
+		return types.Transaction{}, fmt.Errorf("failed to marshal additional fields: %w", err)
 	}
-	return types.Operation{
-		ChainSelector: types.ChainSelector(chainSel),
-		Transaction: types.Transaction{
-			To:               toAddress.StringLong(),
-			Data:             aptosmcms.ArgsToData(args),
-			AdditionalFields: afBytes,
-		},
+	return types.Transaction{
+		To:               toAddress.StringLong(),
+		Data:             aptosmcms.ArgsToData(args),
+		AdditionalFields: afBytes,
 	}, nil
 }

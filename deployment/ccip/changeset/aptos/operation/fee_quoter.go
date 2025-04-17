@@ -27,13 +27,13 @@ var UpdateFeeQuoterDestsOp = operations.NewOperation(
 	updateFeeQuoterDests,
 )
 
-func updateFeeQuoterDests(b operations.Bundle, deps AptosDeps, in UpdateFeeQuoterDestsInput) ([]types.Operation, error) {
+func updateFeeQuoterDests(b operations.Bundle, deps AptosDeps, in UpdateFeeQuoterDestsInput) ([]types.Transaction, error) {
 	// Bind CCIP Package
 	ccipAddress := deps.OnChainState.CCIPAddress
 	ccipBind := ccip.Bind(ccipAddress, deps.AptosChain.Client)
 
 	// Process each destination chain config update
-	var operations []types.Operation
+	var txs []types.Transaction
 
 	for destChainSelector, destConfig := range in.Updates {
 		// Encode the update operation
@@ -60,7 +60,7 @@ func updateFeeQuoterDests(b operations.Bundle, deps AptosDeps, in UpdateFeeQuote
 			destConfig.NetworkFeeUsdCents,
 		)
 		if err != nil {
-			return []types.Operation{}, fmt.Errorf("failed to encode ApplyDestChainConfigUpdates for chain %d: %w", destChainSelector, err)
+			return []types.Transaction{}, fmt.Errorf("failed to encode ApplyDestChainConfigUpdates for chain %d: %w", destChainSelector, err)
 		}
 
 		additionalFields := aptosmcms.AdditionalFields{
@@ -70,16 +70,13 @@ func updateFeeQuoterDests(b operations.Bundle, deps AptosDeps, in UpdateFeeQuote
 		}
 		afBytes, err := json.Marshal(additionalFields)
 		if err != nil {
-			return []types.Operation{}, fmt.Errorf("failed to marshal additional fields: %w", err)
+			return []types.Transaction{}, fmt.Errorf("failed to marshal additional fields: %w", err)
 		}
 
-		operations = append(operations, types.Operation{
-			ChainSelector: types.ChainSelector(deps.AptosChain.Selector),
-			Transaction: types.Transaction{
-				To:               ccipAddress.StringLong(),
-				Data:             aptosmcms.ArgsToData(args),
-				AdditionalFields: afBytes,
-			},
+		txs = append(txs, types.Transaction{
+			To:               ccipAddress.StringLong(),
+			Data:             aptosmcms.ArgsToData(args),
+			AdditionalFields: afBytes,
 		})
 
 		b.Logger.Infow("Adding FeeQuoter destination config update operation",
@@ -87,7 +84,7 @@ func updateFeeQuoterDests(b operations.Bundle, deps AptosDeps, in UpdateFeeQuote
 			"isEnabled", destConfig.IsEnabled)
 	}
 
-	return operations, nil
+	return txs, nil
 }
 
 // UpdateFeeQuoterPricesInput contains configuration for updating FeeQuoter price configs

@@ -26,7 +26,7 @@ var UpdateOffRampSourcesOp = operations.NewOperation(
 	updateOffRampSources,
 )
 
-func updateOffRampSources(b operations.Bundle, deps AptosDeps, in UpdateOffRampSourcesInput) ([]types.Operation, error) {
+func updateOffRampSources(b operations.Bundle, deps AptosDeps, in UpdateOffRampSourcesInput) ([]types.Transaction, error) {
 	// Bind CCIP Package
 	ccipAddress := deps.OnChainState.CCIPAddress
 	offrampBind := ccip_offramp.Bind(ccipAddress, deps.AptosChain.Client)
@@ -44,14 +44,14 @@ func updateOffRampSources(b operations.Bundle, deps AptosDeps, in UpdateOffRampS
 
 		onRampBytes, err := deps.CCIPOnChainState.GetOnRampAddressBytes(sourceChainSelector)
 		if err != nil {
-			return []types.Operation{}, fmt.Errorf("failed to get onRamp address for source chain %d: %w", sourceChainSelector, err)
+			return nil, fmt.Errorf("failed to get onRamp address for source chain %d: %w", sourceChainSelector, err)
 		}
 		sourceChainOnRamp = append(sourceChainOnRamp, onRampBytes)
 	}
 
 	if len(sourceChainSelectors) == 0 {
 		b.Logger.Infow("No OffRamp source updates to apply")
-		return []types.Operation{}, nil
+		return nil, nil
 	}
 
 	// Encode the update operation
@@ -62,7 +62,7 @@ func updateOffRampSources(b operations.Bundle, deps AptosDeps, in UpdateOffRampS
 		sourceChainOnRamp,
 	)
 	if err != nil {
-		return []types.Operation{}, fmt.Errorf("failed to encode ApplySourceChainConfigUpdates for OffRamp: %w", err)
+		return nil, fmt.Errorf("failed to encode ApplySourceChainConfigUpdates for OffRamp: %w", err)
 	}
 
 	// Create MCMS operation
@@ -73,20 +73,15 @@ func updateOffRampSources(b operations.Bundle, deps AptosDeps, in UpdateOffRampS
 	}
 	afBytes, err := json.Marshal(additionalFields)
 	if err != nil {
-		return []types.Operation{}, fmt.Errorf("failed to marshal additional fields: %w", err)
-	}
-
-	operation := types.Operation{
-		ChainSelector: types.ChainSelector(deps.AptosChain.Selector),
-		Transaction: types.Transaction{
-			To:               ccipAddress.StringLong(),
-			Data:             aptosmcms.ArgsToData(args),
-			AdditionalFields: afBytes,
-		},
+		return nil, fmt.Errorf("failed to marshal additional fields: %w", err)
 	}
 
 	b.Logger.Infow("Adding OffRamp source config update operation",
 		"chainCount", len(sourceChainSelectors))
 
-	return []types.Operation{operation}, nil
+	return []types.Transaction{{
+		To:               ccipAddress.StringLong(),
+		Data:             aptosmcms.ArgsToData(args),
+		AdditionalFields: afBytes,
+	}}, nil
 }

@@ -1,6 +1,7 @@
 package aptos
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/smartcontractkit/chainlink/deployment"
@@ -8,9 +9,9 @@ import (
 	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset/aptos/config"
 	commonchangeset "github.com/smartcontractkit/chainlink/deployment/common/changeset"
 	"github.com/smartcontractkit/chainlink/deployment/common/proposalutils"
+	"github.com/smartcontractkit/chainlink/deployment/common/types"
 	"github.com/smartcontractkit/chainlink/deployment/environment/memory"
 	"github.com/smartcontractkit/chainlink/v2/core/logger"
-	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
@@ -42,7 +43,7 @@ func TestDeployAptosChainImp_VerifyPreconditions(t *testing.T) {
 					4457093679053095497: GetMockChainContractParams(t, 4457093679053095497),
 					743186221051783445:  GetMockChainContractParams(t, 743186221051783445),
 				},
-				MCMSConfigPerChain: map[uint64]mcmstypes.Config{
+				MCMSConfigPerChain: map[uint64]types.MCMSWithTimelockConfigV2{
 					4457093679053095497: getMockMCMSConfig(t),
 					743186221051783445:  getMockMCMSConfig(t),
 				},
@@ -209,8 +210,13 @@ func TestDeployAptosChain_Apply(t *testing.T) {
 		ContractParamsPerChain: map[uint64]config.ChainContractParams{
 			chainSelector: mockCCIPParams,
 		},
-		MCMSConfigPerChain: map[uint64]mcmstypes.Config{
-			chainSelector: proposalutils.SingleGroupMCMSV2(t),
+		MCMSConfigPerChain: map[uint64]types.MCMSWithTimelockConfigV2{
+			chainSelector: {
+				Canceller:        proposalutils.SingleGroupMCMSV2(t),
+				Proposer:         proposalutils.SingleGroupMCMSV2(t),
+				Bypasser:         proposalutils.SingleGroupMCMSV2(t),
+				TimelockMinDelay: big.NewInt(0),
+			},
 		},
 	}
 	env, err := commonchangeset.ApplyChangesetsV2(t, env, []commonchangeset.ConfiguredChangeSet{
