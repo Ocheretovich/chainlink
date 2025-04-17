@@ -464,18 +464,9 @@ func (i *pluginOracleCreator) createReadersAndWriters(
 			continue
 		}
 
-		chainReaderConfig, err1 := getChainReaderConfig(i.lggr, chainID, destChainID, homeChainID, ofc, chainSelector, relayChainFamily)
+		cr, err1 := createChainReader(ctx, i.lggr, relayer, chainID, destChainID, homeChainID, ofc, chainSelector, relayChainFamily)
 		if err1 != nil {
 			return nil, nil, fmt.Errorf("failed to get chain reader config: %w", err1)
-		}
-
-		cr, err1 := relayer.NewContractReader(ctx, chainReaderConfig)
-		if err1 != nil {
-			return nil, nil, err1
-		}
-
-		if relayChainFamily == relay.NetworkAptos {
-			cr = aptosloop.NewLoopChainReader(i.lggr, cr)
 		}
 
 		if chainID == destChainID && destChainFamily == relayChainFamily {
@@ -548,15 +539,17 @@ func decodeAndValidateOffchainConfig(
 	return ofc, nil
 }
 
-func getChainReaderConfig(
+func createChainReader(
+	ctx context.Context,
 	lggr logger.Logger,
+	relayer loop.Relayer,
 	chainID string,
 	destChainID string,
 	homeChainID string,
 	ofc offChainConfig,
 	chainSelector cciptypes.ChainSelector,
 	chainFamily string,
-) ([]byte, error) {
+) (types.ContractReader, error) {
 	// TODO: create a chain writer constructor interface and define family specific implementations in oraclecreator.plugin
 	switch chainFamily {
 	case relay.NetworkEVM:
@@ -587,7 +580,12 @@ func getChainReaderConfig(
 			return nil, fmt.Errorf("failed to marshal chain reader config: %w", err)
 		}
 
-		return marshaledConfig, nil
+		cr, err := relayer.NewContractReader(ctx, marshaledConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create chain reader: %w", err)
+		}
+
+		return cr, nil
 	case relay.NetworkSolana:
 		var err error
 		var cfg config.ContractReader
@@ -608,7 +606,12 @@ func getChainReaderConfig(
 			return nil, fmt.Errorf("failed to marshal chain reader config: %w", err)
 		}
 
-		return marshaledConfig, nil
+		cr, err := relayer.NewContractReader(ctx, marshaledConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create chain reader: %w", err)
+		}
+
+		return cr, nil
 
 	case relay.NetworkAptos:
 		cfg, err := aptosconfig.GetChainReaderConfig()
@@ -619,7 +622,16 @@ func getChainReaderConfig(
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal Aptos chain reader config: %w", err)
 		}
-		return marshaledConfig, nil
+
+		cr, err := relayer.NewContractReader(ctx, marshaledConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create chain reader: %w", err)
+		}
+
+		// wrap the chain reader for LOOP specific behavior
+		cr = aptosloop.NewLoopChainReader(lggr, cr)
+
+		return cr, nil
 
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", chainFamily)
