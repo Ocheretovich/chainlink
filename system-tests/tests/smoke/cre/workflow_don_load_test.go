@@ -70,6 +70,7 @@ type Chaos struct {
 }
 
 type TestConfigLoadTest struct {
+	Duration                      string                                   `toml:"duration"`
 	BlockchainA                   *blockchain.Input                        `toml:"blockchain_a" validate:"required"`
 	NodeSets                      []*ns.Input                              `toml:"nodesets" validate:"required"`
 	JD                            *jd.Input                                `toml:"jd" validate:"required"`
