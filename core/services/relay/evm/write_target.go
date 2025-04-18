@@ -111,7 +111,7 @@ func NewWriteTarget(ctx context.Context, relayer *Relayer, chain legacyevm.Chain
 
 	dfProcessor := processor.NewDataFeedsProcessor(registryMetrics)
 
-	beholder, err := writetarget.NewMonitor(lggr, []monitor.ProtoProcessor{dfProcessor})
+	beholder, err := writetarget.NewMonitor(lggr, []writetarget.ProductSpecificProcessor{dfProcessor})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Aptos WT monitor client: %+w", err)
 	}
