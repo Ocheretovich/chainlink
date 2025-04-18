@@ -488,7 +488,7 @@ func DeployEnvironments(
 							"fullnameOverride": actions.NetworkName(network.Name),
 							"image": map[string]interface{}{
 								"repository": "ghcr.io/foundry-rs/foundry",
-								"tag":        "nightly-deae4f1f37a3ef081b62d7488e876d1a5bec815e",
+								"tag":        "nightly-96105b4d240681c336e063eac0e250cc51a84414",
 							},
 							"anvil": map[string]interface{}{
 								"chainId":                   fmt.Sprintf("%d", network.ChainID),
