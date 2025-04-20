@@ -5,41 +5,41 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/fs"
+	// "io/fs"
 	"math"
 	"net/http"
 	"net/http/pprof"
 	"net/url"
-	"path/filepath"
-	"regexp"
+	// "path/filepath"
+	// "regexp"
 	"strings"
 	"time"
 
 	"github.com/Depado/ginprom"
-	helmet "github.com/danielkov/gin-helmet"
+	// helmet "github.com/danielkov/gin-helmet"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/expvar"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
-	limits "github.com/gin-contrib/size"
+	// "github.com/gin-contrib/sessions"
+	// "github.com/gin-contrib/sessions/cookie"
+	// limits "github.com/gin-contrib/size"
 	"github.com/gin-gonic/gin"
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
-	"github.com/pkg/errors"
+	// "github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/ulule/limiter/v3"
 	mgin "github.com/ulule/limiter/v3/drivers/middleware/gin"
 	"github.com/ulule/limiter/v3/drivers/store/memory"
 	"github.com/unrolled/secure"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
-	"go.opentelemetry.io/otel"
+	// "go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	// "go.opentelemetry.io/otel"
 
 	"github.com/smartcontractkit/chainlink/v2/core/build"
 	"github.com/smartcontractkit/chainlink/v2/core/logger"
 	"github.com/smartcontractkit/chainlink/v2/core/services/chainlink"
 	"github.com/smartcontractkit/chainlink/v2/core/web/auth"
-	"github.com/smartcontractkit/chainlink/v2/core/web/loader"
+	// "github.com/smartcontractkit/chainlink/v2/core/web/loader"
 	"github.com/smartcontractkit/chainlink/v2/core/web/resolver"
 	"github.com/smartcontractkit/chainlink/v2/core/web/schema"
 )
@@ -48,56 +48,56 @@ import (
 func NewRouter(app chainlink.Application, prometheus *ginprom.Prometheus) (*gin.Engine, error) {
 	engine := gin.New()
 	engine.RemoteIPHeaders = nil // don't trust default headers: "X-Forwarded-For", "X-Real-IP"
-	config := app.GetConfig()
-	secret, err := app.SecretGenerator().Generate(config.RootDir())
-	if err != nil {
-		return nil, err
-	}
-	sessionStore := cookie.NewStore(secret)
-	sessionStore.Options(config.WebServer().SessionOptions())
-	cors := uiCorsHandler(config.WebServer().AllowOrigins())
-	if prometheus != nil {
-		prometheusUse(prometheus, engine, promhttp.HandlerOpts{EnableOpenMetrics: true})
-	}
+	// config := app.GetConfig()
+	// secret, err := app.SecretGenerator().Generate(config.RootDir())
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// sessionStore := cookie.NewStore(secret)
+	// sessionStore.Options(config.WebServer().SessionOptions())
+	// cors := uiCorsHandler(config.WebServer().AllowOrigins())
+	// if prometheus != nil {
+	// 	prometheusUse(prometheus, engine, promhttp.HandlerOpts{EnableOpenMetrics: true})
+	// }
 
-	tls := config.WebServer().TLS()
-	engine.Use(
-		otelgin.Middleware("chainlink-web-routes",
-			otelgin.WithTracerProvider(otel.GetTracerProvider())),
-		limits.RequestSizeLimiter(config.WebServer().HTTPMaxSize()),
-		loggerFunc(app.GetLogger()),
-		gin.Recovery(),
-		cors,
-		secureMiddleware(tls.ForceRedirect(), tls.Host(), config.Insecure().DevWebServer()),
-	)
-	if prometheus != nil {
-		engine.Use(prometheus.Instrument())
-	}
-	engine.Use(helmet.Default())
+	// tls := config.WebServer().TLS()
+	// engine.Use(
+	// 	otelgin.Middleware("chainlink-web-routes",
+	// 		otelgin.WithTracerProvider(otel.GetTracerProvider())),
+	// 	limits.RequestSizeLimiter(config.WebServer().HTTPMaxSize()),
+	// 	loggerFunc(app.GetLogger()),
+	// 	gin.Recovery(),
+	// 	cors,
+	// 	secureMiddleware(tls.ForceRedirect(), tls.Host(), config.Insecure().DevWebServer()),
+	// )
+	// if prometheus != nil {
+	// 	engine.Use(prometheus.Instrument())
+	// }
+	// engine.Use(helmet.Default())
 
-	rl := config.WebServer().RateLimit()
+	// rl := config.WebServer().RateLimit()
 	api := engine.Group(
 		"/",
-		rateLimiter(
-			rl.AuthenticatedPeriod(),
-			rl.Authenticated(),
-		),
-		sessions.Sessions(auth.SessionName, sessionStore),
+	// 	rateLimiter(
+	// 		rl.AuthenticatedPeriod(),
+	// 		rl.Authenticated(),
+	// 	),
+	// 	sessions.Sessions(auth.SessionName, sessionStore),
 	)
 
-	debugRoutes(app, api)
-	healthRoutes(app, api)
-	sessionRoutes(app, api)
-	v2Routes(app, api)
-	loopRoutes(app, api)
+	// debugRoutes(app, api)
+	// healthRoutes(app, api)
+	// sessionRoutes(app, api)
+	// v2Routes(app, api)
+	// loopRoutes(app, api)
+	//
+	// guiAssetRoutes(engine, config.Insecure().DisableRateLimiting(), app.GetLogger())
 
-	guiAssetRoutes(engine, config.Insecure().DisableRateLimiting(), app.GetLogger())
-
-	api.POST("/query",
-		auth.AuthenticateGQL(app.AuthenticationProvider(), app.GetLogger().Named("GQLHandler")),
-		loader.Middleware(app),
-		graphqlHandler(app),
-	)
+	// api.POST("/query",
+	// 	auth.AuthenticateGQL(app.AuthenticationProvider(), app.GetLogger().Named("GQLHandler")),
+	// 	loader.Middleware(app),
+	// 	graphqlHandler(app),
+	// )
 
 	app.AuthenticationProvider().ExtendRouter(api)
 
@@ -443,68 +443,71 @@ var indexRateLimitPeriod = 1 * time.Minute
 // guiAssetRoutes serves the operator UI static files and index.html. Rate
 // limiting is disabled when in dev mode.
 func guiAssetRoutes(engine *gin.Engine, rateLimitingDisabled bool, lggr logger.SugaredLogger) {
-	// Serve static files
-	var assetsRouterHandlers []gin.HandlerFunc
-	if !rateLimitingDisabled {
-		assetsRouterHandlers = append(assetsRouterHandlers, rateLimiter(
-			staticAssetsRateLimitPeriod,
-			staticAssetsRateLimit,
-		))
-	}
-
-	assetsRouterHandlers = append(
-		assetsRouterHandlers,
-		ServeGzippedAssets("/assets", assetFs, lggr),
-	)
-
-	// Get Operator UI Assets
-	//
-	// We have to use a route here because a RouterGroup only runs middlewares
-	// when a route matches exactly. See https://github.com/gin-gonic/gin/issues/531
-	engine.GET("/assets/:file", assetsRouterHandlers...)
-
-	// Serve the index HTML file unless it is an api path
-	var noRouteHandlers []gin.HandlerFunc
-	if !rateLimitingDisabled {
-		noRouteHandlers = append(noRouteHandlers, rateLimiter(
-			indexRateLimitPeriod,
-			indexRateLimit,
-		))
-	}
-	noRouteHandlers = append(noRouteHandlers, func(c *gin.Context) {
-		path := c.Request.URL.Path
-
-		// Return a 404 if the path is an unmatched API path
-		if match, _ := regexp.MatchString(`^/v[0-9]+/.*`, path); match {
-			c.AbortWithStatus(http.StatusNotFound)
-
-			return
-		}
-
-		// Return a 404 for unknown extensions
-		if filepath.Ext(path) != "" {
-			c.AbortWithStatus(http.StatusNotFound)
-
-			return
-		}
-
-		// Render the React index page for any other unknown requests
-		file, err := assetFs.Open("index.html")
-		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) {
-				c.AbortWithStatus(http.StatusNotFound)
-			} else {
-				lggr.Errorf("failed to open static file '%s': %+v", path, err)
-				c.AbortWithStatus(http.StatusInternalServerError)
-			}
-			return
-		}
-		defer lggr.ErrorIfFn(file.Close, "Error closing file")
-
-		http.ServeContent(c.Writer, c.Request, path, time.Time{}, file)
+	engine.NoRoute(func(c *gin.Context) {
+		c.String(200, "hello")
 	})
-
-	engine.NoRoute(noRouteHandlers...)
+	// // Serve static files
+	// var assetsRouterHandlers []gin.HandlerFunc
+	// if !rateLimitingDisabled {
+	// 	assetsRouterHandlers = append(assetsRouterHandlers, rateLimiter(
+	// 		staticAssetsRateLimitPeriod,
+	// 		staticAssetsRateLimit,
+	// 	))
+	// }
+	//
+	// assetsRouterHandlers = append(
+	// 	assetsRouterHandlers,
+	// 	ServeGzippedAssets("/assets", assetFs, lggr),
+	// )
+	//
+	// // Get Operator UI Assets
+	// //
+	// // We have to use a route here because a RouterGroup only runs middlewares
+	// // when a route matches exactly. See https://github.com/gin-gonic/gin/issues/531
+	// engine.GET("/assets/:file", assetsRouterHandlers...)
+	//
+	// // Serve the index HTML file unless it is an api path
+	// var noRouteHandlers []gin.HandlerFunc
+	// if !rateLimitingDisabled {
+	// 	noRouteHandlers = append(noRouteHandlers, rateLimiter(
+	// 		indexRateLimitPeriod,
+	// 		indexRateLimit,
+	// 	))
+	// }
+	// noRouteHandlers = append(noRouteHandlers, func(c *gin.Context) {
+	// 	path := c.Request.URL.Path
+	//
+	// 	// Return a 404 if the path is an unmatched API path
+	// 	if match, _ := regexp.MatchString(`^/v[0-9]+/.*`, path); match {
+	// 		c.AbortWithStatus(http.StatusNotFound)
+	//
+	// 		return
+	// 	}
+	//
+	// 	// Return a 404 for unknown extensions
+	// 	if filepath.Ext(path) != "" {
+	// 		c.AbortWithStatus(http.StatusNotFound)
+	//
+	// 		return
+	// 	}
+	//
+	// 	// Render the React index page for any other unknown requests
+	// 	file, err := assetFs.Open("index.html")
+	// 	if err != nil {
+	// 		if errors.Is(err, fs.ErrNotExist) {
+	// 			c.AbortWithStatus(http.StatusNotFound)
+	// 		} else {
+	// 			lggr.Errorf("failed to open static file '%s': %+v", path, err)
+	// 			c.AbortWithStatus(http.StatusInternalServerError)
+	// 		}
+	// 		return
+	// 	}
+	// 	defer lggr.ErrorIfFn(file.Close, "Error closing file")
+	//
+	// 	http.ServeContent(c.Writer, c.Request, path, time.Time{}, file)
+	// })
+	//
+	// engine.NoRoute(noRouteHandlers...)
 }
 
 // Inspired by https://github.com/gin-gonic/gin/issues/961

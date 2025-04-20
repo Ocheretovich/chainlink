@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/gin-contrib/sessions"
+	// "github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/ulule/limiter/v3"
 	mgin "github.com/ulule/limiter/v3/drivers/middleware/gin"
@@ -41,7 +41,7 @@ import (
 	"github.com/smartcontractkit/chainlink/v2/core/logger/audit"
 	clsessions "github.com/smartcontractkit/chainlink/v2/core/sessions"
 	"github.com/smartcontractkit/chainlink/v2/core/utils"
-	webauth "github.com/smartcontractkit/chainlink/v2/core/web/auth"
+	// webauth "github.com/smartcontractkit/chainlink/v2/core/web/auth"
 )
 
 const (
@@ -233,14 +233,15 @@ func (oi *oidcAuthenticator) handleOIDCCallback(c *gin.Context) {
 	// w.Header().Set("Content-Type", "application/json")
 	// w.WriteHeader(http.StatusOK)
 
-	sesh := sessions.Default(c)
-	fmt.Printf("%#v %#v %#v", sesh, webauth.SessionIDKey, session.ID)
-	sesh.Set(webauth.SessionIDKey, session.ID)
-	err = sesh.Save()
-	if err != nil {
-		fmt.Printf("%#v\n", err)
-	}
-	c.Redirect(http.StatusFound, "/")
+	// sesh := sessions.Default(c)
+	// fmt.Printf("%#v %#v %#v", sesh, webauth.SessionIDKey, session.ID)
+	// sesh.Set(webauth.SessionIDKey, session.ID)
+	// err = sesh.Save()
+	// if err != nil {
+	// 	fmt.Printf("%#v\n", err)
+	// }
+	c.String(200, "ok")
+	// c.Redirect(http.StatusFound, "/")
 }
 
 // FindUser in the context of the OIDC driver only supports local admin users
