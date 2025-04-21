@@ -299,6 +299,7 @@ func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in Init
 	}, nil
 }
 
+// TODO: export this to utils and use everywhere
 // generateMCMSTx is a helper function that generates a MCMS txs for the given parameters
 func generateMCMSTx(toAddress aptos.AccountAddress, moduleInfo bind.ModuleInformation, function string, args [][]byte) (types.Transaction, error) {
 	additionalFields := aptosmcms.AdditionalFields{

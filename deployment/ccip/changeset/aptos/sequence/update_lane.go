@@ -57,14 +57,14 @@ func updateAptosLanesSequence(b operations.Bundle, deps operation.AptosDeps, in 
 	}
 	mcmsTxs = append(mcmsTxs, offRampReport.Output...)
 
-	// // TODO: This is not working
-	// // 4. Update FeeQuoters with gas prices
-	// b.Logger.Info("Updating gas prices on FeeQuoters")
-	// feeQuoterPricesReport, err := operations.ExecuteOperation(b, operation.UpdateFeeQuoterPricesOp, deps, in.UpdateFeeQuoterPricesConfig)
-	// if err != nil {
-	// 	return types.BatchOperation{}, fmt.Errorf("failed to update FeeQuoter prices: %w", err)
-	// }
-	// mcmsTxs = append(mcmsTxs, feeQuoterPricesReport.Output...)
+	// TODO: This is not working
+	// 4. Update FeeQuoters with gas prices
+	b.Logger.Info("Updating gas prices on FeeQuoters")
+	feeQuoterPricesReport, err := operations.ExecuteOperation(b, operation.UpdateFeeQuoterPricesOp, deps, in.UpdateFeeQuoterPricesConfig)
+	if err != nil {
+		return types.BatchOperation{}, fmt.Errorf("failed to update FeeQuoter prices: %w", err)
+	}
+	mcmsTxs = append(mcmsTxs, feeQuoterPricesReport.Output...)
 
 	return types.BatchOperation{
 		ChainSelector: types.ChainSelector(deps.AptosChain.Selector),
