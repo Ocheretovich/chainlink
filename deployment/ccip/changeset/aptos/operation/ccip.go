@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/aptos-labs/aptos-go-sdk"
-	"github.com/smartcontractkit/chainlink-aptos/bindings/bind"
 	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip"
 	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip_offramp"
 	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip_onramp"
@@ -240,7 +239,7 @@ func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in Init
 	if err != nil {
 		return types.BatchOperation{}, fmt.Errorf("failed to encode onramp initialize: %w", err)
 	}
-	mcmsTx, err := generateMCMSTx(in.CCIPAddress, moduleInfo, function, args)
+	mcmsTx, err := utils.GenerateMCMSTx(in.CCIPAddress, moduleInfo, function, args)
 	if err != nil {
 		return types.BatchOperation{}, fmt.Errorf("failed to generate MCMS operations for OnRamp Initialize: %w", err)
 	}
@@ -259,7 +258,7 @@ func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in Init
 	if err != nil {
 		return types.BatchOperation{}, fmt.Errorf("failed to encode offramp initialize: %w", err)
 	}
-	mcmsTx, err = generateMCMSTx(in.CCIPAddress, moduleInfo, function, args)
+	mcmsTx, err = utils.GenerateMCMSTx(in.CCIPAddress, moduleInfo, function, args)
 	if err != nil {
 		return types.BatchOperation{}, fmt.Errorf("failed to generate MCMS operations for OffRamp Initialize: %w", err)
 	}
@@ -277,7 +276,7 @@ func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in Init
 	if err != nil {
 		return types.BatchOperation{}, fmt.Errorf("failed to encode feequoter initialize: %w", err)
 	}
-	mcmsTx, err = generateMCMSTx(in.CCIPAddress, moduleInfo, function, args)
+	mcmsTx, err = utils.GenerateMCMSTx(in.CCIPAddress, moduleInfo, function, args)
 	if err != nil {
 		return types.BatchOperation{}, fmt.Errorf("failed to generate MCMS operations for FeeQuoter Initialize: %w", err)
 	}
@@ -287,7 +286,7 @@ func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in Init
 	if err != nil {
 		return types.BatchOperation{}, fmt.Errorf("failed to encode rmnremote initialize: %w", err)
 	}
-	mcmsTx, err = generateMCMSTx(in.CCIPAddress, moduleInfo, function, args)
+	mcmsTx, err = utils.GenerateMCMSTx(in.CCIPAddress, moduleInfo, function, args)
 	if err != nil {
 		return types.BatchOperation{}, fmt.Errorf("failed to generate MCMS operations for RMNRemote Initialize: %w", err)
 	}
@@ -296,24 +295,5 @@ func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in Init
 	return types.BatchOperation{
 		ChainSelector: types.ChainSelector(deps.AptosChain.Selector),
 		Transactions:  txs,
-	}, nil
-}
-
-// TODO: export this to utils and use everywhere
-// generateMCMSTx is a helper function that generates a MCMS txs for the given parameters
-func generateMCMSTx(toAddress aptos.AccountAddress, moduleInfo bind.ModuleInformation, function string, args [][]byte) (types.Transaction, error) {
-	additionalFields := aptosmcms.AdditionalFields{
-		PackageName: moduleInfo.PackageName,
-		ModuleName:  moduleInfo.ModuleName,
-		Function:    function,
-	}
-	afBytes, err := json.Marshal(additionalFields)
-	if err != nil {
-		return types.Transaction{}, fmt.Errorf("failed to marshal additional fields: %w", err)
-	}
-	return types.Transaction{
-		To:               toAddress.StringLong(),
-		Data:             aptosmcms.ArgsToData(args),
-		AdditionalFields: afBytes,
 	}, nil
 }

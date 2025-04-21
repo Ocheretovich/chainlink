@@ -161,3 +161,21 @@ func CreateChunksAndStage(
 
 	return operations, nil
 }
+
+// GenerateMCMSTx is a helper function that generates a MCMS txs for the given parameters
+func GenerateMCMSTx(toAddress aptos.AccountAddress, moduleInfo bind.ModuleInformation, function string, args [][]byte) (types.Transaction, error) {
+	additionalFields := aptosmcms.AdditionalFields{
+		PackageName: moduleInfo.PackageName,
+		ModuleName:  moduleInfo.ModuleName,
+		Function:    function,
+	}
+	afBytes, err := json.Marshal(additionalFields)
+	if err != nil {
+		return types.Transaction{}, fmt.Errorf("failed to marshal additional fields: %w", err)
+	}
+	return types.Transaction{
+		To:               toAddress.StringLong(),
+		Data:             aptosmcms.ArgsToData(args),
+		AdditionalFields: afBytes,
+	}, nil
+}
