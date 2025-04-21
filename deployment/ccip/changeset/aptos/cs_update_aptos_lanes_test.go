@@ -68,11 +68,11 @@ func TestAddAptosLanes_Apply(t *testing.T) {
 
 	_, _, router, err := aptosOnRamp.Onramp().GetDestChainConfig(&bind.CallOpts{}, emvSelector)
 	require.NoError(t, err)
-	require.NotEqual(t, router, aptos.AccountZero)
+	require.NotEqual(t, router, aptos.AccountAddress{})
 
 	_, _, router2, err := aptosOnRamp.Onramp().GetDestChainConfig(&bind.CallOpts{}, emvSelector2)
 	require.NoError(t, err)
-	require.NotEqual(t, router2, aptos.AccountZero)
+	require.NotEqual(t, router2, aptos.AccountAddress{})
 }
 
 func getMockUpdateConfig(

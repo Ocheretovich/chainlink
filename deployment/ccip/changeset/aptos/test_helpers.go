@@ -62,11 +62,9 @@ func GetMockChainContractParams(t *testing.T, chainSelector uint64) config.Chain
 			SourceChainsOnRamp:               [][]byte{common.HexToAddress(sepMockOnRampAddress).Bytes()},
 		},
 		OnRampParams: config.OnRampParams{
-			ChainSelector:             chainSelector,
-			AllowlistAdmin:            mockParsedAddress,
-			DestChainSelectors:        []uint64{},
-			DestChainEnabled:          []bool{},
-			DestChainAllowlistEnabled: []bool{},
+			ChainSelector:  chainSelector,
+			AllowlistAdmin: mockParsedAddress,
+			FeeAggregator:  mockParsedAddress,
 		},
 	}
 }

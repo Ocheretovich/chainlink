@@ -91,7 +91,7 @@ var GenerateDeployCCIPProposalOp = operations.NewOperation(
 
 func generateDeployCCIPProposal(b operations.Bundle, deps AptosDeps, in DeployCCIPInput) (DeployCCIPOutput, error) {
 	// Validate there's no package deployed
-	if deps.OnChainState.CCIPAddress != aptos.AccountZero {
+	if deps.OnChainState.CCIPAddress != (aptos.AccountAddress{}) {
 		b.Logger.Infow("CCIP Package already deployed", "addr", deps.OnChainState.CCIPAddress.String())
 		return DeployCCIPOutput{CCIPAddress: deps.OnChainState.CCIPAddress}, nil
 	}
@@ -227,24 +227,15 @@ var InitializeCCIPOp = operations.NewOperation(
 func generateInitializeCCIPProposal(b operations.Bundle, deps AptosDeps, in InitializeCCIPInput) (types.BatchOperation, error) {
 	var txs []types.Transaction
 
-	// Config OnRamp
+	// Config OnRamp with empty lane configs. We're only able to get router address after deploying the router module
 	onrampBind := ccip_onramp.Bind(in.CCIPAddress, deps.AptosChain.Client)
-	// TODO: we should initialize with empty destchains...
-	var destChainRouters []aptos.AccountAddress
-	for _, destChainEnabled := range in.CCIPConfig.OnRampParams.DestChainEnabled {
-		if !destChainEnabled {
-			destChainRouters = append(destChainRouters, aptos.AccountZero)
-			continue
-		}
-		destChainRouters = append(destChainRouters, in.CCIPAddress)
-	}
 	moduleInfo, function, _, args, err := onrampBind.Onramp().Encoder().Initialize(
 		deps.AptosChain.Selector,
-		aptos.AccountAddress{}, // TODO: where is fee aggregator deployed?
+		in.CCIPConfig.OnRampParams.FeeAggregator,
 		in.CCIPConfig.OnRampParams.AllowlistAdmin,
-		in.CCIPConfig.OnRampParams.DestChainSelectors,
-		destChainRouters,
-		in.CCIPConfig.OnRampParams.DestChainAllowlistEnabled,
+		[]uint64{},
+		[]aptos.AccountAddress{},
+		[]bool{},
 	)
 	if err != nil {
 		return types.BatchOperation{}, fmt.Errorf("failed to encode onramp initialize: %w", err)

@@ -106,7 +106,9 @@ var UpdateFeeQuoterPricesOp = operations.NewOperation(
 	updateFeeQuoterPrices,
 )
 
-func updateFeeQuoterPrices(b operations.Bundle, deps AptosDeps, in UpdateFeeQuoterPricesInput) ([]types.Operation, error) {
+func updateFeeQuoterPrices(b operations.Bundle, deps AptosDeps, in UpdateFeeQuoterPricesInput) ([]types.Transaction, error) {
+	var txs []types.Transaction
+
 	// Bind CCIP Package
 	ccipAddress := deps.OnChainState.CCIPAddress
 	ccipBind := ccip.Bind(ccipAddress, deps.AptosChain.Client)
@@ -122,7 +124,7 @@ func updateFeeQuoterPrices(b operations.Bundle, deps AptosDeps, in UpdateFeeQuot
 		address := aptos.AccountAddress{}
 		err := address.ParseStringRelaxed(tokenAddr)
 		if err != nil {
-			return []types.Operation{}, fmt.Errorf("failed to parse Aptos token address %s: %w", tokenAddr, err)
+			return nil, fmt.Errorf("failed to parse Aptos token address %s: %w", tokenAddr, err)
 		}
 		sourceTokens = append(sourceTokens, address)
 		sourceUsdPerToken = append(sourceUsdPerToken, price)
@@ -134,14 +136,13 @@ func updateFeeQuoterPrices(b operations.Bundle, deps AptosDeps, in UpdateFeeQuot
 		gasUsdPerUnitGas = append(gasUsdPerUnitGas, gasPrice)
 	}
 
-	// Generate MCMS operation to update prices
-	var operations []types.Operation
-
+	// Generate MCMS tx to update prices
 	if len(sourceTokens) == 0 && len(gasDestChainSelectors) == 0 {
 		b.Logger.Infow("No price updates to apply")
-		return operations, nil
+		return txs, nil
 	}
-	// Encode the update operation
+
+	// Encode the update tx
 	moduleInfo, function, _, args, err := ccipBind.FeeQuoter().Encoder().UpdatePrices(
 		sourceTokens,
 		sourceUsdPerToken,
@@ -149,7 +150,7 @@ func updateFeeQuoterPrices(b operations.Bundle, deps AptosDeps, in UpdateFeeQuot
 		gasUsdPerUnitGas,
 	)
 	if err != nil {
-		return []types.Operation{}, fmt.Errorf("failed to encode UpdatePrices: %w", err)
+		return nil, fmt.Errorf("failed to encode UpdatePrices: %w", err)
 	}
 
 	additionalFields := aptosmcms.AdditionalFields{
@@ -159,16 +160,13 @@ func updateFeeQuoterPrices(b operations.Bundle, deps AptosDeps, in UpdateFeeQuot
 	}
 	afBytes, err := json.Marshal(additionalFields)
 	if err != nil {
-		return []types.Operation{}, fmt.Errorf("failed to marshal additional fields: %w", err)
+		return nil, fmt.Errorf("failed to marshal additional fields: %w", err)
 	}
 
-	operations = append(operations, types.Operation{
-		ChainSelector: types.ChainSelector(deps.AptosChain.Selector),
-		Transaction: types.Transaction{
-			To:               ccipAddress.StringLong(),
-			Data:             aptosmcms.ArgsToData(args),
-			AdditionalFields: afBytes,
-		},
+	txs = append(txs, types.Transaction{
+		To:               ccipAddress.StringLong(),
+		Data:             aptosmcms.ArgsToData(args),
+		AdditionalFields: afBytes,
 	})
 
 	b.Logger.Infow("Adding FeeQuoter price update operation",
@@ -176,5 +174,5 @@ func updateFeeQuoterPrices(b operations.Bundle, deps AptosDeps, in UpdateFeeQuot
 		"gasPriceCount", len(gasDestChainSelectors),
 	)
 
-	return operations, nil
+	return txs, nil
 }

@@ -43,7 +43,7 @@ func (cs DeployAptosChain) VerifyPreconditions(env deployment.Environment, confi
 			errs = append(errs, fmt.Errorf("aptos chain %d not found in state", chainSel))
 			continue
 		}
-		if chainState.MCMSAddress == aptos.AccountZero {
+		if chainState.MCMSAddress == (aptos.AccountAddress{}) {
 			mcmsConfig := config.MCMSConfigPerChain[chainSel]
 			for _, cfg := range []mcmstypes.Config{mcmsConfig.Bypasser, mcmsConfig.Canceller, mcmsConfig.Proposer} {
 				if err := cfg.Validate(); err != nil {

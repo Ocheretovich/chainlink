@@ -41,16 +41,7 @@ func updateAptosLanesSequence(b operations.Bundle, deps operation.AptosDeps, in 
 	}
 	mcmsTxs = append(mcmsTxs, feeQuoterDestReport.Output...)
 
-	// TODO: Skipping this, UpdatePrices is not working
-	// // 2. Update FeeQuoters with gas prices
-	// b.Logger.Info("Updating gas prices on FeeQuoters")
-	// feeQuoterPricesReport, err := operations.ExecuteOperation(b, operation.UpdateFeeQuoterPricesOp, deps, in.UpdateFeeQuoterPricesConfig)
-	// if err != nil {
-	// 	return mcms.Proposal{}, fmt.Errorf("failed to update FeeQuoter prices: %w", err)
-	// }
-	// mcmsOperations = append(mcmsOperations, feeQuoterPricesReport.Output...)
-
-	// 3. Configure destinations on OnRamps
+	// 2. Configure destinations on OnRamps
 	b.Logger.Info("Updating destination configs on OnRamps")
 	onRampReport, err := operations.ExecuteOperation(b, operation.UpdateOnRampDestsOp, deps, in.UpdateOnRampDestsConfig)
 	if err != nil {
@@ -58,13 +49,22 @@ func updateAptosLanesSequence(b operations.Bundle, deps operation.AptosDeps, in 
 	}
 	mcmsTxs = append(mcmsTxs, onRampReport.Output...)
 
-	// 4. Configure sources on OffRamps
+	// 3. Configure sources on OffRamps
 	b.Logger.Info("Updating source configs on OffRamps")
 	offRampReport, err := operations.ExecuteOperation(b, operation.UpdateOffRampSourcesOp, deps, in.UpdateOffRampSourcesConfig)
 	if err != nil {
 		return types.BatchOperation{}, fmt.Errorf("failed to update OffRamp sources: %w", err)
 	}
 	mcmsTxs = append(mcmsTxs, offRampReport.Output...)
+
+	// // TODO: This is not working
+	// // 4. Update FeeQuoters with gas prices
+	// b.Logger.Info("Updating gas prices on FeeQuoters")
+	// feeQuoterPricesReport, err := operations.ExecuteOperation(b, operation.UpdateFeeQuoterPricesOp, deps, in.UpdateFeeQuoterPricesConfig)
+	// if err != nil {
+	// 	return types.BatchOperation{}, fmt.Errorf("failed to update FeeQuoter prices: %w", err)
+	// }
+	// mcmsTxs = append(mcmsTxs, feeQuoterPricesReport.Output...)
 
 	return types.BatchOperation{
 		ChainSelector: types.ChainSelector(deps.AptosChain.Selector),

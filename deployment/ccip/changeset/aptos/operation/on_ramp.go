@@ -6,6 +6,7 @@ import (
 
 	"github.com/aptos-labs/aptos-go-sdk"
 	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip_onramp"
+	"github.com/smartcontractkit/chainlink-aptos/bindings/ccip_router"
 	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset/v1_6"
 	"github.com/smartcontractkit/chainlink/deployment/operations"
 	aptosmcms "github.com/smartcontractkit/mcms/sdk/aptos"
@@ -36,17 +37,34 @@ func updateOnRampDests(b operations.Bundle, deps AptosDeps, in UpdateOnRampDests
 	var destChainRouters []aptos.AccountAddress
 	var destChainAllowlistEnabled []bool
 
+	// Get routers state addresses
+	var testRouterStateAddress aptos.AccountAddress
+	var routerStateAddress aptos.AccountAddress
+	if deps.OnChainState.TestRouterAddress != (aptos.AccountAddress{}) {
+		testRouter := ccip_router.Bind(deps.OnChainState.TestRouterAddress, deps.AptosChain.Client)
+		stateAddress, err := testRouter.Router().GetStateAddress(nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get test router state address: %w", err)
+		}
+		testRouterStateAddress = stateAddress
+	}
+	router := ccip_router.Bind(deps.OnChainState.CCIPAddress, deps.AptosChain.Client)
+	routerStateAddress, err := router.Router().GetStateAddress(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get router state address: %w", err)
+	}
+
 	// Process each destination chain config update
 	for destChainSelector, update := range in.Updates {
 		// destChainRouters
 		if !update.IsEnabled {
-			destChainRouters = append(destChainRouters, aptos.AccountZero)
+			destChainRouters = append(destChainRouters, aptos.AccountAddress{})
 			continue
 		}
 		if update.TestRouter {
-			destChainRouters = append(destChainRouters, deps.OnChainState.TestRouterAddress)
+			destChainRouters = append(destChainRouters, testRouterStateAddress)
 		} else {
-			destChainRouters = append(destChainRouters, deps.OnChainState.CCIPAddress)
+			destChainRouters = append(destChainRouters, routerStateAddress)
 		}
 		// destChainSelectors
 		destChainSelectors = append(destChainSelectors, destChainSelector)
