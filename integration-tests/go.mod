@@ -12,7 +12,7 @@ replace github.com/smartcontractkit/chainlink/deployment => ../deployment
 // Using a separate `require` here to avoid surrounding line changes
 // creating potential merge conflicts.
 require (
-	github.com/smartcontractkit/chainlink/deployment v0.0.0-20250402195829-918b2a02a926
+	github.com/smartcontractkit/chainlink/deployment v0.0.0-20250422170214-3cfd0c362e60
 	github.com/smartcontractkit/chainlink/v2 v2.0.0-20250402195829-918b2a02a926
 )
 
@@ -457,8 +457,8 @@ require (
 	github.com/smartcontractkit/chainlink-protos/orchestrator v0.5.0 // indirect
 	github.com/smartcontractkit/chainlink-protos/rmn/v1.6/go v0.0.0-20250131130834-15e0d4cde2a6 // indirect
 	github.com/smartcontractkit/chainlink-protos/svr v1.1.0 // indirect
-	github.com/smartcontractkit/chainlink-solana v1.1.2-0.20250422135223-b1befef3342e // indirect
-	github.com/smartcontractkit/chainlink-testing-framework/framework v0.7.4 // indirect
+	github.com/smartcontractkit/chainlink-solana v1.1.2-0.20250422153735-3884c92bd0de // indirect
+	github.com/smartcontractkit/chainlink-testing-framework/framework v0.7.5 // indirect
 	github.com/smartcontractkit/grpc-proxy v0.0.0-20240830132753-a7e17fec5ab7 // indirect
 	github.com/smartcontractkit/mcms v0.16.1 // indirect
 	github.com/smartcontractkit/tdh2/go/ocr2/decryptionplugin v0.0.0-20241009055228-33d0c0bf38de // indirect
