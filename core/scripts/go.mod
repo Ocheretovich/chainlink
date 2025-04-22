@@ -19,7 +19,7 @@ require (
 require (
 	github.com/docker/docker v28.0.4+incompatible
 	github.com/docker/go-connections v0.5.0
-	github.com/ethereum/go-ethereum v1.15.3
+	github.com/ethereum/go-ethereum v1.15.7
 	github.com/gkampitakis/go-snaps v0.5.4
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
@@ -81,7 +81,7 @@ require (
 	github.com/XSAM/otelsql v0.29.0 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/apache/arrow-go/v18 v18.0.0 // indirect
-	github.com/aptos-labs/aptos-go-sdk v1.5.0 // indirect
+	github.com/aptos-labs/aptos-go-sdk v1.6.3-0.20250331001805-0680b714db6d // indirect
 	github.com/atombender/go-jsonschema v0.16.1-0.20240916205339-a74cd4e2851c // indirect
 	github.com/avast/retry-go/v4 v4.6.1 // indirect
 	github.com/aws/aws-sdk-go v1.55.6 // indirect
@@ -349,6 +349,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/smartcontractkit/ccip-owner-contracts v0.1.0 // indirect
 	github.com/smartcontractkit/chain-selectors v1.0.52 // indirect
+	github.com/smartcontractkit/chainlink-aptos v0.0.0-20250422085952-29f3af22b874 // indirect
 	github.com/smartcontractkit/chainlink-ccip/chains/solana v0.0.0-20250411163110-21a13ceb3ac4 // indirect
 	github.com/smartcontractkit/chainlink-deployments-framework v0.0.3 // indirect
 	github.com/smartcontractkit/chainlink-feeds v0.1.2-0.20250227211209-7cd000095135 // indirect
@@ -390,7 +391,7 @@ require (
 	github.com/ulule/limiter/v3 v3.11.2 // indirect
 	github.com/unrolled/secure v1.13.0 // indirect
 	github.com/urfave/cli/v2 v2.27.5 // indirect
-	github.com/valyala/fastjson v1.4.1 // indirect
+	github.com/valyala/fastjson v1.6.4 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
