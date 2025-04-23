@@ -16,6 +16,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/latest/offramp"
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/latest/onramp"
+	ccipconsts "github.com/smartcontractkit/chainlink-ccip/pkg/consts"
 	"github.com/smartcontractkit/chainlink-ccip/pkg/reader"
 	"github.com/smartcontractkit/chainlink-ccip/pkg/types/ccipocr3"
 
@@ -811,14 +812,17 @@ func (b *EventBinding) registered() bool {
 var offrampABI, _ = abi.JSON(strings.NewReader(offramp.OffRampABI))
 var onrampABI, _ = abi.JSON(strings.NewReader(onramp.OnRampABI))
 
-const commitReportAcceptedEvent = "CommitReportAccepted"
-const ccipMessageSentEvent = "CCIPMessageSent"
+const commitReportAcceptedEvent = ccipconsts.EventNameCommitReportAccepted
+const ccipMessageSentEvent = ccipconsts.EventNameCCIPMessageSent
+const executionStateChangedEvent = ccipconsts.EventNameExecutionStateChanged
 
 func isTypeHardcoded(t any) bool {
 	switch t.(type) {
 	case *reader.CommitReportAcceptedEvent:
 		return true
 	case *reader.SendRequestedEvent:
+		return true
+	case *reader.ExecutionStateChangedEvent:
 		return true
 	}
 
@@ -845,6 +849,16 @@ func decodeHardcodedType(out any, log *logpoller.Log) error {
 		}
 
 		populateSendRequestFromEvent(out, internalEvent)
+
+		return nil
+	case *reader.ExecutionStateChangedEvent:
+		var internalEvent offramp.OffRampExecutionStateChanged
+		err := unpackLog(&internalEvent, executionStateChangedEvent, log, offrampABI)
+		if err != nil {
+			return err
+		}
+
+		populateExecutionStateChangedFromEvent(out, internalEvent)
 
 		return nil
 	}
@@ -883,6 +897,16 @@ func unpackLog(out any, event string, log *logpoller.Log, hcabi abi.ABI) error {
 	}
 
 	return abi.ParseTopics(out, indexed, log.GetTopics()[1:])
+}
+
+func populateExecutionStateChangedFromEvent(out *reader.ExecutionStateChangedEvent, internalEvent offramp.OffRampExecutionStateChanged) {
+	out.SourceChainSelector = ccipocr3.ChainSelector(internalEvent.SourceChainSelector)
+	out.SequenceNumber = ccipocr3.SeqNum(internalEvent.SequenceNumber)
+	out.MessageID = internalEvent.MessageId
+	out.MessageHash = internalEvent.MessageHash
+	out.State = internalEvent.State
+	out.ReturnData = internalEvent.ReturnData
+	out.GasUsed = *internalEvent.GasUsed
 }
 
 func populateSendRequestFromEvent(out *reader.SendRequestedEvent, internalEvent onramp.OnRampCCIPMessageSent) {
